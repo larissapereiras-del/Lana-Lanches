@@ -34,18 +34,19 @@ const escapeHTML = value => {
 let products = [];
 let neighborhoods = [];
 
+let selectedImageFile = null;
+let removeCurrentImage = false;
+
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
 async function checkSession() {
-
   const {
     data: { session }
   } =
     await db.auth.getSession();
-
 
   if (session) {
     await showAdminPanel();
@@ -64,17 +65,14 @@ el("password")
   .addEventListener(
     "keydown",
     event => {
-
       if (event.key === "Enter") {
         login();
       }
-
     }
   );
 
 
 async function login() {
-
   const email =
     el("email")
       .value
@@ -84,23 +82,18 @@ async function login() {
     el("password")
       .value;
 
-
   el("login-error").textContent =
     "";
 
-
   if (!email || !password) {
-
     el("login-error").textContent =
       "Preencha e-mail e senha.";
 
     return;
   }
 
-
   el("login-btn").disabled =
     true;
-
 
   const {
     error
@@ -111,13 +104,10 @@ async function login() {
         password
       });
 
-
   el("login-btn").disabled =
     false;
 
-
   if (error) {
-
     console.error(error);
 
     el("login-error").textContent =
@@ -125,7 +115,6 @@ async function login() {
 
     return;
   }
-
 
   await showAdminPanel();
 }
@@ -135,34 +124,27 @@ el("logout-btn")
   .addEventListener(
     "click",
     async () => {
-
       await db.auth.signOut();
-
 
       el("admin-panel")
         .classList
         .add("hidden");
 
-
       el("login-card")
         .classList
         .remove("hidden");
-
     }
   );
 
 
 async function showAdminPanel() {
-
   el("login-card")
     .classList
     .add("hidden");
 
-
   el("admin-panel")
     .classList
     .remove("hidden");
-
 
   await Promise.all([
     loadStore(),
@@ -178,7 +160,6 @@ async function showAdminPanel() {
 ========================================================= */
 
 async function loadStore() {
-
   const {
     data,
     error
@@ -189,9 +170,7 @@ async function loadStore() {
       .eq("id", 1)
       .single();
 
-
   if (error) {
-
     console.error(
       "Erro ao carregar status:",
       error
@@ -204,9 +183,7 @@ async function loadStore() {
     return;
   }
 
-
   const labels = {
-
     open:
       "🟢 Loja aberta e recebendo pedidos",
 
@@ -215,9 +192,7 @@ async function loadStore() {
 
     closed:
       "🔴 Loja fechada"
-
   };
-
 
   el("admin-store-text")
     .textContent =
@@ -231,15 +206,12 @@ document
     "[data-store-status]"
   )
   .forEach(button => {
-
     button.addEventListener(
       "click",
       async () => {
-
         const status =
           button.dataset
             .storeStatus;
-
 
         const {
           error
@@ -254,9 +226,7 @@ document
             })
             .eq("id", 1);
 
-
         if (error) {
-
           console.error(error);
 
           alert(
@@ -266,12 +236,9 @@ document
           return;
         }
 
-
         await loadStore();
-
       }
     );
-
   });
 
 
@@ -280,7 +247,6 @@ document
 ========================================================= */
 
 async function loadProducts() {
-
   const {
     data,
     error
@@ -295,9 +261,7 @@ async function loadProducts() {
         }
       );
 
-
   if (error) {
-
     console.error(
       "Erro ao carregar produtos:",
       error
@@ -310,22 +274,18 @@ async function loadProducts() {
     return;
   }
 
-
   products =
     data || [];
-
 
   renderProducts();
 }
 
 
 function renderProducts() {
-
   el("admin-products")
     .innerHTML =
     categoryOrder
       .map(category => {
-
         const items =
           products.filter(
             product =>
@@ -333,11 +293,9 @@ function renderProducts() {
               category
           );
 
-
         if (!items.length) {
           return "";
         }
-
 
         return `
           <div class="admin-category">
@@ -354,43 +312,57 @@ function renderProducts() {
 
                       <div class="admin-product-info">
 
-                        <div class="admin-product-name">
-
-                          <strong>
-                            ${escapeHTML(product.name)}
-                          </strong>
-
-                          <span
-                            class="product-status ${
-                              product.active
-                                ? "product-active"
-                                : "product-inactive"
-                            }"
-                          >
-                            ${
-                              product.active
-                                ? "Disponível"
-                                : "Indisponível"
-                            }
-                          </span>
-
-                        </div>
-
-
                         ${
-                          product.description
+                          product.image_url
                             ? `
-                              <p class="admin-product-description">
-                                ${escapeHTML(product.description)}
-                              </p>
+                              <img
+                                src="${escapeHTML(product.image_url)}"
+                                alt="${escapeHTML(product.name)}"
+                                class="admin-product-thumb"
+                              >
                             `
                             : ""
                         }
 
+                        <div>
 
-                        <span class="admin-product-price">
-                          ${money(product.price)}
-                        </span>
+                          <div class="admin-product-name">
+
+                            <strong>
+                              ${escapeHTML(product.name)}
+                            </strong>
+
+                            <span
+                              class="product-status ${
+                                product.active
+                                  ? "product-active"
+                                  : "product-inactive"
+                              }"
+                            >
+                              ${
+                                product.active
+                                  ? "Disponível"
+                                  : "Indisponível"
+                              }
+                            </span>
+
+                          </div>
+
+                          ${
+                            product.description
+                              ? `
+                                <p class="admin-product-description">
+                                  ${escapeHTML(product.description)}
+                                </p>
+                              `
+                              : ""
+                          }
+
+                          <span class="admin-product-price">
+                            ${money(product.price)}
+                          </span>
+
+                        </div>
 
                       </div>
 
@@ -404,7 +376,6 @@ function renderProducts() {
                           ✏️ Editar
                         </button>
 
-
                         <button
                           class="secondary-btn"
                           data-product-toggle="${product.id}"
@@ -415,7 +386,6 @@ function renderProducts() {
                               : "Ativar"
                           }
                         </button>
-
 
                         <button
                           class="danger-btn"
@@ -434,35 +404,28 @@ function renderProducts() {
 
           </div>
         `;
-
       })
       .join("");
-
 
   bindProductButtons();
 }
 
 
 function bindProductButtons() {
-
   document
     .querySelectorAll(
       "[data-product-edit]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         () => {
-
           openEditProduct(
             button.dataset
               .productEdit
           );
-
         }
       );
-
     });
 
 
@@ -471,15 +434,12 @@ function bindProductButtons() {
       "[data-product-toggle]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         async () => {
-
           const id =
             button.dataset
               .productToggle;
-
 
           const product =
             products.find(
@@ -488,11 +448,9 @@ function bindProductButtons() {
                 String(id)
             );
 
-
           if (!product) {
             return;
           }
-
 
           const {
             error
@@ -508,9 +466,7 @@ function bindProductButtons() {
                 id
               );
 
-
           if (error) {
-
             console.error(error);
 
             alert(
@@ -520,12 +476,9 @@ function bindProductButtons() {
             return;
           }
 
-
           await loadProducts();
-
         }
       );
-
     });
 
 
@@ -534,15 +487,12 @@ function bindProductButtons() {
       "[data-product-delete]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         async () => {
-
           const id =
             button.dataset
               .productDelete;
-
 
           const product =
             products.find(
@@ -551,22 +501,24 @@ function bindProductButtons() {
                 String(id)
             );
 
-
           if (!product) {
             return;
           }
-
 
           const confirmed =
             confirm(
               `Deseja realmente excluir "${product.name}"?`
             );
 
-
           if (!confirmed) {
             return;
           }
 
+          if (product.image_url) {
+            await deleteImageFromStorage(
+              product.image_url
+            );
+          }
 
           const {
             error
@@ -579,9 +531,7 @@ function bindProductButtons() {
                 id
               );
 
-
           if (error) {
-
             console.error(error);
 
             alert(
@@ -591,13 +541,254 @@ function bindProductButtons() {
             return;
           }
 
-
           await loadProducts();
+        }
+      );
+    });
+}
 
+
+/* =========================================================
+   FOTO DO PRODUTO
+========================================================= */
+
+el("product-image")
+  .addEventListener(
+    "change",
+    event => {
+      const file =
+        event.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ];
+
+      if (
+        !allowedTypes.includes(
+          file.type
+        )
+      ) {
+        el("product-form-error")
+          .textContent =
+          "Use uma imagem JPG, PNG ou WebP.";
+
+        el("product-image").value =
+          "";
+
+        return;
+      }
+
+      if (
+        file.size >
+        5 * 1024 * 1024
+      ) {
+        el("product-form-error")
+          .textContent =
+          "A imagem precisa ter no máximo 5 MB.";
+
+        el("product-image").value =
+          "";
+
+        return;
+      }
+
+      el("product-form-error")
+        .textContent =
+        "";
+
+      selectedImageFile =
+        file;
+
+      removeCurrentImage =
+        false;
+
+      const previewURL =
+        URL.createObjectURL(
+          file
+        );
+
+      showImagePreview(
+        previewURL
+      );
+    }
+  );
+
+
+el("remove-product-image-btn")
+  .addEventListener(
+    "click",
+    () => {
+      selectedImageFile =
+        null;
+
+      el("product-image").value =
+        "";
+
+      removeCurrentImage =
+        true;
+
+      hideImagePreview();
+    }
+  );
+
+
+function showImagePreview(url) {
+  el("product-image-preview")
+    .src =
+    url;
+
+  el("product-image-preview-box")
+    .classList
+    .remove("hidden");
+}
+
+
+function hideImagePreview() {
+  el("product-image-preview")
+    .src =
+    "";
+
+  el("product-image-preview-box")
+    .classList
+    .add("hidden");
+}
+
+
+async function uploadProductImage(
+  file,
+  productName
+) {
+  if (!file) {
+    return null;
+  }
+
+  const extension =
+    file.name
+      .split(".")
+      .pop()
+      .toLowerCase();
+
+  const safeName =
+    productName
+      .normalize("NFD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        ""
+      )
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
+      );
+
+  const fileName =
+    `${Date.now()}-${safeName}.${extension}`;
+
+  const {
+    error
+  } =
+    await db.storage
+      .from("product-images")
+      .upload(
+        fileName,
+        file,
+        {
+          cacheControl:
+            "3600",
+
+          upsert:
+            false
         }
       );
 
-    });
+  if (error) {
+    console.error(
+      "Erro no upload:",
+      error
+    );
+
+    throw new Error(
+      "Não foi possível enviar a foto."
+    );
+  }
+
+  const {
+    data
+  } =
+    db.storage
+      .from("product-images")
+      .getPublicUrl(
+        fileName
+      );
+
+  return data.publicUrl;
+}
+
+
+function getStoragePathFromURL(
+  imageURL
+) {
+  if (!imageURL) {
+    return null;
+  }
+
+  const marker =
+    "/storage/v1/object/public/product-images/";
+
+  const index =
+    imageURL.indexOf(
+      marker
+    );
+
+  if (index === -1) {
+    return null;
+  }
+
+  return decodeURIComponent(
+    imageURL.substring(
+      index + marker.length
+    )
+  );
+}
+
+
+async function deleteImageFromStorage(
+  imageURL
+) {
+  const path =
+    getStoragePathFromURL(
+      imageURL
+    );
+
+  if (!path) {
+    return;
+  }
+
+  const {
+    error
+  } =
+    await db.storage
+      .from("product-images")
+      .remove([
+        path
+      ]);
+
+  if (error) {
+    console.error(
+      "Erro ao excluir imagem:",
+      error
+    );
+  }
 }
 
 
@@ -609,32 +800,31 @@ el("new-product-btn")
   .addEventListener(
     "click",
     () => {
-
       resetProductForm();
 
       el("product-form-title")
         .textContent =
         "Novo produto";
 
-
       el("product-form")
         .classList
         .remove("hidden");
-
 
       el("product-form")
         .scrollIntoView({
           behavior: "smooth",
           block: "center"
         });
-
     }
   );
 
 
 function resetProductForm() {
-
   el("editing-product-id").value =
+    "";
+
+  el("editing-product-image-url")
+    .value =
     "";
 
   el("product-category").value =
@@ -649,9 +839,20 @@ function resetProductForm() {
   el("product-price").value =
     "";
 
+  el("product-image").value =
+    "";
+
   el("product-form-error")
     .textContent =
     "";
+
+  selectedImageFile =
+    null;
+
+  removeCurrentImage =
+    false;
+
+  hideImagePreview();
 }
 
 
@@ -660,7 +861,6 @@ function resetProductForm() {
 ========================================================= */
 
 function openEditProduct(id) {
-
   const product =
     products.find(
       item =>
@@ -668,14 +868,16 @@ function openEditProduct(id) {
         String(id)
     );
 
-
   if (!product) {
     return;
   }
 
-
   el("editing-product-id").value =
     product.id;
+
+  el("editing-product-image-url")
+    .value =
+    product.image_url || "";
 
   el("product-category").value =
     product.category;
@@ -687,23 +889,37 @@ function openEditProduct(id) {
     product.description || "";
 
   el("product-price").value =
-    Number(product.price).toFixed(2);
+    Number(product.price)
+      .toFixed(2);
 
+  el("product-image").value =
+    "";
+
+  selectedImageFile =
+    null;
+
+  removeCurrentImage =
+    false;
+
+  if (product.image_url) {
+    showImagePreview(
+      product.image_url
+    );
+  } else {
+    hideImagePreview();
+  }
 
   el("product-form-title")
     .textContent =
     "Editar produto";
 
-
   el("product-form-error")
     .textContent =
     "";
 
-
   el("product-form")
     .classList
     .remove("hidden");
-
 
   el("product-form")
     .scrollIntoView({
@@ -721,13 +937,11 @@ el("cancel-product-btn")
   .addEventListener(
     "click",
     () => {
-
       resetProductForm();
 
       el("product-form")
         .classList
         .add("hidden");
-
     }
   );
 
@@ -740,28 +954,27 @@ el("save-product-btn")
   .addEventListener(
     "click",
     async () => {
-
       const editingId =
         el("editing-product-id")
           .value;
 
+      const currentImageURL =
+        el("editing-product-image-url")
+          .value;
 
       const category =
         el("product-category")
           .value;
-
 
       const name =
         el("product-name")
           .value
           .trim();
 
-
       const description =
         el("product-description")
           .value
           .trim();
-
 
       const price =
         Number(
@@ -769,14 +982,11 @@ el("save-product-btn")
             .value
         );
 
-
       el("product-form-error")
         .textContent =
         "";
 
-
       if (!category) {
-
         el("product-form-error")
           .textContent =
           "Selecione a categoria.";
@@ -784,9 +994,7 @@ el("save-product-btn")
         return;
       }
 
-
       if (!name) {
-
         el("product-form-error")
           .textContent =
           "Digite o nome do produto.";
@@ -794,12 +1002,10 @@ el("save-product-btn")
         return;
       }
 
-
       if (
         Number.isNaN(price) ||
         price <= 0
       ) {
-
         el("product-form-error")
           .textContent =
           "Digite um preço válido.";
@@ -807,38 +1013,87 @@ el("save-product-btn")
         return;
       }
 
-
       el("save-product-btn")
         .disabled =
         true;
 
-
-      if (editingId) {
-
-        await updateProduct({
-          editingId,
-          category,
-          name,
-          description,
-          price
-        });
-
-      } else {
-
-        await createProduct({
-          category,
-          name,
-          description,
-          price
-        });
-
-      }
-
-
       el("save-product-btn")
-        .disabled =
-        false;
+        .textContent =
+        "Salvando...";
 
+      try {
+        let imageURL =
+          currentImageURL || null;
+
+        if (selectedImageFile) {
+          const newImageURL =
+            await uploadProductImage(
+              selectedImageFile,
+              name
+            );
+
+          if (
+            currentImageURL &&
+            newImageURL !==
+              currentImageURL
+          ) {
+            await deleteImageFromStorage(
+              currentImageURL
+            );
+          }
+
+          imageURL =
+            newImageURL;
+        }
+
+        if (
+          removeCurrentImage &&
+          currentImageURL
+        ) {
+          await deleteImageFromStorage(
+            currentImageURL
+          );
+
+          imageURL =
+            null;
+        }
+
+        if (editingId) {
+          await updateProduct({
+            editingId,
+            category,
+            name,
+            description,
+            price,
+            imageURL
+          });
+        } else {
+          await createProduct({
+            category,
+            name,
+            description,
+            price,
+            imageURL
+          });
+        }
+
+      } catch (error) {
+        console.error(error);
+
+        el("product-form-error")
+          .textContent =
+          error.message ||
+          "Não foi possível salvar o produto.";
+
+      } finally {
+        el("save-product-btn")
+          .disabled =
+          false;
+
+        el("save-product-btn")
+          .textContent =
+          "Salvar produto";
+      }
     }
   );
 
@@ -847,16 +1102,15 @@ async function createProduct({
   category,
   name,
   description,
-  price
+  price,
+  imageURL
 }) {
-
   const productsInCategory =
     products.filter(
       product =>
         product.category ===
         category
     );
-
 
   const maxSort =
     productsInCategory.length
@@ -869,12 +1123,12 @@ async function createProduct({
                 ) || 0
             )
         )
-      : categoryBaseSort(category);
-
+      : categoryBaseSort(
+          category
+        );
 
   const sortOrder =
     maxSort + 10;
-
 
   const {
     error
@@ -887,48 +1141,38 @@ async function createProduct({
         description:
           description || null,
         price,
-        active: true,
+        image_url:
+          imageURL,
+        active:
+          true,
         sort_order:
           sortOrder
       });
 
-
   if (error) {
-
     console.error(error);
-
 
     if (
       error.code ===
       "23505"
     ) {
-
-      el("product-form-error")
-        .textContent =
-        "Já existe um produto com esse nome.";
-
-    } else {
-
-      el("product-form-error")
-        .textContent =
-        "Não foi possível cadastrar o produto.";
-
+      throw new Error(
+        "Já existe um produto com esse nome."
+      );
     }
 
-    return;
+    throw new Error(
+      "Não foi possível cadastrar o produto."
+    );
   }
 
-
   resetProductForm();
-
 
   el("product-form")
     .classList
     .add("hidden");
 
-
   await loadProducts();
-
 
   alert(
     "Produto cadastrado com sucesso!"
@@ -941,9 +1185,9 @@ async function updateProduct({
   category,
   name,
   description,
-  price
+  price,
+  imageURL
 }) {
-
   const oldProduct =
     products.find(
       item =>
@@ -951,26 +1195,22 @@ async function updateProduct({
         String(editingId)
     );
 
-
   let sortOrder =
     oldProduct
       ? oldProduct.sort_order
       : 0;
-
 
   if (
     oldProduct &&
     oldProduct.category !==
       category
   ) {
-
     const productsInCategory =
       products.filter(
         product =>
           product.category ===
           category
       );
-
 
     const maxSort =
       productsInCategory.length
@@ -987,11 +1227,9 @@ async function updateProduct({
             category
           );
 
-
     sortOrder =
       maxSort + 10;
   }
-
 
   const {
     error
@@ -1004,6 +1242,8 @@ async function updateProduct({
         description:
           description || null,
         price,
+        image_url:
+          imageURL,
         sort_order:
           sortOrder
       })
@@ -1012,43 +1252,30 @@ async function updateProduct({
         editingId
       );
 
-
   if (error) {
-
     console.error(error);
-
 
     if (
       error.code ===
       "23505"
     ) {
-
-      el("product-form-error")
-        .textContent =
-        "Já existe outro produto com esse nome.";
-
-    } else {
-
-      el("product-form-error")
-        .textContent =
-        "Não foi possível editar o produto.";
-
+      throw new Error(
+        "Já existe outro produto com esse nome."
+      );
     }
 
-    return;
+    throw new Error(
+      "Não foi possível editar o produto."
+    );
   }
 
-
   resetProductForm();
-
 
   el("product-form")
     .classList
     .add("hidden");
 
-
   await loadProducts();
-
 
   alert(
     "Produto atualizado com sucesso!"
@@ -1057,19 +1284,12 @@ async function updateProduct({
 
 
 function categoryBaseSort(category) {
-
   const bases = {
-
     "Cachorro-quente": 0,
-
     "Pastéis": 100,
-
     "Caldos": 200,
-
     "Porções": 300
-
   };
-
 
   return bases[category] || 0;
 }
@@ -1080,7 +1300,6 @@ function categoryBaseSort(category) {
 ========================================================= */
 
 async function loadNeighborhoods() {
-
   const {
     data,
     error
@@ -1090,9 +1309,7 @@ async function loadNeighborhoods() {
       .select("*")
       .order("name");
 
-
   if (error) {
-
     console.error(
       "Erro ao carregar bairros:",
       error
@@ -1105,26 +1322,21 @@ async function loadNeighborhoods() {
     return;
   }
 
-
   neighborhoods =
     data || [];
-
 
   renderNeighborhoods();
 }
 
 
 function renderNeighborhoods() {
-
   if (!neighborhoods.length) {
-
     el("admin-neighborhoods")
       .innerHTML =
       "<p>Nenhum bairro cadastrado.</p>";
 
     return;
   }
-
 
   el("admin-neighborhoods")
     .innerHTML =
@@ -1182,15 +1394,12 @@ function renderNeighborhoods() {
       "[data-neighborhood-toggle]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         async () => {
-
           const id =
             button.dataset
               .neighborhoodToggle;
-
 
           const neighborhood =
             neighborhoods.find(
@@ -1199,11 +1408,9 @@ function renderNeighborhoods() {
                 String(id)
             );
 
-
           if (!neighborhood) {
             return;
           }
-
 
           const {
             error
@@ -1219,9 +1426,7 @@ function renderNeighborhoods() {
                 id
               );
 
-
           if (error) {
-
             console.error(error);
 
             alert(
@@ -1231,12 +1436,9 @@ function renderNeighborhoods() {
             return;
           }
 
-
           await loadNeighborhoods();
-
         }
       );
-
     });
 
 
@@ -1245,26 +1447,21 @@ function renderNeighborhoods() {
       "[data-neighborhood-delete]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         async () => {
-
           const id =
             button.dataset
               .neighborhoodDelete;
-
 
           const confirmed =
             confirm(
               "Tem certeza que deseja excluir este bairro?"
             );
 
-
           if (!confirmed) {
             return;
           }
-
 
           const {
             error
@@ -1277,9 +1474,7 @@ function renderNeighborhoods() {
                 id
               );
 
-
           if (error) {
-
             console.error(error);
 
             alert(
@@ -1289,12 +1484,9 @@ function renderNeighborhoods() {
             return;
           }
 
-
           await loadNeighborhoods();
-
         }
       );
-
     });
 }
 
@@ -1303,12 +1495,10 @@ el("add-neighborhood-btn")
   .addEventListener(
     "click",
     async () => {
-
       const name =
         el("new-neighborhood")
           .value
           .trim();
-
 
       const fee =
         Number(
@@ -1316,9 +1506,7 @@ el("add-neighborhood-btn")
             .value
         );
 
-
       if (!name) {
-
         alert(
           "Digite o nome do bairro."
         );
@@ -1326,19 +1514,16 @@ el("add-neighborhood-btn")
         return;
       }
 
-
       if (
         Number.isNaN(fee) ||
         fee < 0
       ) {
-
         alert(
           "Digite uma taxa válida."
         );
 
         return;
       }
-
 
       const {
         error
@@ -1351,9 +1536,7 @@ el("add-neighborhood-btn")
             active: true
           });
 
-
       if (error) {
-
         console.error(error);
 
         alert(
@@ -1363,19 +1546,15 @@ el("add-neighborhood-btn")
         return;
       }
 
-
       el("new-neighborhood")
         .value =
         "";
-
 
       el("new-fee")
         .value =
         "";
 
-
       await loadNeighborhoods();
-
     }
   );
 
@@ -1385,7 +1564,6 @@ el("add-neighborhood-btn")
 ========================================================= */
 
 async function loadOrders() {
-
   const {
     data,
     error
@@ -1405,9 +1583,7 @@ async function loadOrders() {
       )
       .limit(100);
 
-
   if (error) {
-
     console.error(
       "Erro ao carregar pedidos:",
       error
@@ -1420,7 +1596,6 @@ async function loadOrders() {
     return;
   }
 
-
   renderOrders(
     data || []
   );
@@ -1428,9 +1603,7 @@ async function loadOrders() {
 
 
 function statusLabel(status) {
-
   const labels = {
-
     received:
       "Recebido",
 
@@ -1448,9 +1621,7 @@ function statusLabel(status) {
 
     cancelled:
       "Cancelado"
-
   };
-
 
   return labels[status] ||
     status;
@@ -1458,9 +1629,7 @@ function statusLabel(status) {
 
 
 function renderOrders(orders) {
-
   if (!orders.length) {
-
     el("orders")
       .innerHTML =
       "<p>Nenhum pedido recebido ainda.</p>";
@@ -1468,12 +1637,10 @@ function renderOrders(orders) {
     return;
   }
 
-
   el("orders")
     .innerHTML =
     orders
       .map(order => {
-
         const createdAt =
           new Date(
             order.created_at
@@ -1481,7 +1648,6 @@ function renderOrders(orders) {
             .toLocaleString(
               "pt-BR"
             );
-
 
         const address =
           order.fulfillment ===
@@ -1510,7 +1676,6 @@ function renderOrders(orders) {
               }
             `;
 
-
         const items =
           (order.items || [])
             .map(
@@ -1522,7 +1687,6 @@ function renderOrders(orders) {
               `
             )
             .join("");
-
 
         return `
           <div class="order-card">
@@ -1682,7 +1846,6 @@ function renderOrders(orders) {
 
           </div>
         `;
-
       })
       .join("");
 
@@ -1692,20 +1855,16 @@ function renderOrders(orders) {
       "[data-order-status]"
     )
     .forEach(button => {
-
       button.addEventListener(
         "click",
         async () => {
-
           const orderId =
             button.dataset
               .orderId;
 
-
           const status =
             button.dataset
               .orderStatus;
-
 
           const {
             error
@@ -1720,9 +1879,7 @@ function renderOrders(orders) {
                 orderId
               );
 
-
           if (error) {
-
             console.error(error);
 
             alert(
@@ -1732,12 +1889,9 @@ function renderOrders(orders) {
             return;
           }
 
-
           await loadOrders();
-
         }
       );
-
     });
 }
 
@@ -1755,18 +1909,15 @@ el("refresh-orders-btn")
 
 setInterval(
   async () => {
-
     const {
       data: { session }
     } =
       await db.auth
         .getSession();
 
-
     if (session) {
       loadOrders();
     }
-
   },
   15000
 );
