@@ -5,241 +5,117 @@ const categoryOrder = [
   "Porções"
 ];
 
-
 const money = value =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL"
   }).format(Number(value) || 0);
 
-
 const el = id =>
   document.getElementById(id);
 
-
-const escapeHTML = value => {
+function escapeHTML(value) {
   if (value === null || value === undefined) {
     return "";
   }
 
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-};
-
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 let products = [];
 let neighborhoods = [];
-
-let selectedImageFile = null;
-let removeCurrentImage = false;
-
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-async function checkSession() {
-  const {
-    data: { session }
-  } =
-    await db.auth.getSession();
-
-  if (session) {
-    await showAdminPanel();
-  }
-}
-
-
-el("login-btn")
-  .addEventListener(
-    "click",
-    login
-  );
-
-
-el("password")
-  .addEventListener(
-    "keydown",
-    event => {
-      if (event.key === "Enter") {
-        login();
-      }
-    }
-  );
-
-
-async function login() {
-  const email =
-    el("email")
-      .value
-      .trim();
-
-  const password =
-    el("password")
-      .value;
-
-  el("login-error").textContent =
-    "";
-
-  if (!email || !password) {
-    el("login-error").textContent =
-      "Preencha e-mail e senha.";
-
-    return;
-  }
-
-  el("login-btn").disabled =
-    true;
-
-  const {
-    error
-  } =
-    await db.auth
-      .signInWithPassword({
-        email,
-        password
-      });
-
-  el("login-btn").disabled =
-    false;
-
-  if (error) {
-    console.error(error);
-
-    el("login-error").textContent =
-      "E-mail ou senha inválidos.";
-
-    return;
-  }
-
-  await showAdminPanel();
-}
-
-
-el("logout-btn")
-  .addEventListener(
-    "click",
-    async () => {
-      await db.auth.signOut();
-
-      el("admin-panel")
-        .classList
-        .add("hidden");
-
-      el("login-card")
-        .classList
-        .remove("hidden");
-    }
-  );
-
-
-async function showAdminPanel() {
-  el("login-card")
-    .classList
-    .add("hidden");
-
-  el("admin-panel")
-    .classList
-    .remove("hidden");
-
-  await Promise.all([
-    loadStore(),
-    loadProducts(),
-    loadNeighborhoods(),
-    loadOrders()
-  ]);
-}
+let storeStatus = "closed";
+let activeCategory = "Todos";
+let cart = {};
 
 
 /* =========================================================
-   STATUS DA LOJA
+   LOJA
 ========================================================= */
 
 async function loadStore() {
-  const {
-    data,
-    error
-  } =
-    await db
-      .from("store_settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
+  try {
+    const { data, error } =
+      await db
+        .from("store_settings")
+        .select("id,status")
+        .eq("id", 1)
+        .single();
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    storeStatus =
+      data?.status || "closed";
+
+    renderStoreStatus();
+
+  } catch (error) {
     console.error(
-      "Erro ao carregar status:",
+      "Erro ao carregar loja:",
       error
     );
 
-    el("admin-store-text")
-      .textContent =
-      "Erro ao carregar status.";
+    storeStatus = "closed";
 
-    return;
+    el("store-status").textContent =
+      "🔴 Indisponível";
+
+    el("store-message").textContent =
+      "Não foi possível carregar o status da loja.";
+
+    el("store-message")
+      .classList
+      .remove("hidden");
   }
-
-  const labels = {
-    open:
-      "🟢 Loja aberta e recebendo pedidos",
-
-    paused:
-      "🟡 Novos pedidos estão pausados",
-
-    closed:
-      "🔴 Loja fechada"
-  };
-
-  el("admin-store-text")
-    .textContent =
-    labels[data.status] ||
-    data.status;
 }
 
 
-document
-  .querySelectorAll(
-    "[data-store-status]"
-  )
-  .forEach(button => {
-    button.addEventListener(
-      "click",
-      async () => {
-        const status =
-          button.dataset
-            .storeStatus;
+function renderStoreStatus() {
+  const badge =
+    el("store-status");
 
-        const {
-          error
-        } =
-          await db
-            .from("store_settings")
-            .update({
-              status,
-              updated_at:
-                new Date()
-                  .toISOString()
-            })
-            .eq("id", 1);
+  const message =
+    el("store-message");
 
-        if (error) {
-          console.error(error);
+  if (storeStatus === "open") {
+    badge.textContent =
+      "🟢 Aberto";
 
-          alert(
-            "Não foi possível alterar o status da loja."
-          );
+    message.classList
+      .add("hidden");
+  }
 
-          return;
-        }
+  else if (storeStatus === "paused") {
+    badge.textContent =
+      "🟡 Pausado";
 
-        await loadStore();
-      }
-    );
-  });
+    message.textContent =
+      "Estamos com muitos pedidos no momento. Novos pedidos estão temporariamente pausados.";
+
+    message.classList
+      .remove("hidden");
+  }
+
+  else {
+    badge.textContent =
+      "🔴 Fechado";
+
+    message.textContent =
+      "Estamos fechados no momento. Você ainda pode consultar o cardápio.";
+
+    message.classList
+      .remove("hidden");
+  }
+
+  renderProducts();
+}
 
 
 /* =========================================================
@@ -247,1051 +123,252 @@ document
 ========================================================= */
 
 async function loadProducts() {
-  const {
-    data,
-    error
-  } =
-    await db
-      .from("products")
-      .select("*")
-      .order(
-        "sort_order",
-        {
-          ascending: true
-        }
-      );
+  try {
+    const { data, error } =
+      await db
+        .from("products")
+        .select("*")
+        .order(
+          "sort_order",
+          { ascending: true }
+        );
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    products =
+      data || [];
+
+    renderCategories();
+    renderProducts();
+
+  } catch (error) {
     console.error(
       "Erro ao carregar produtos:",
       error
     );
 
-    el("admin-products")
-      .innerHTML =
-      "<p>Erro ao carregar produtos.</p>";
-
-    return;
+    el("menu").innerHTML = `
+      <div class="notice">
+        Não foi possível carregar o cardápio.
+      </div>
+    `;
   }
-
-  products =
-    data || [];
-
-  renderProducts();
 }
 
 
+/* =========================================================
+   CATEGORIAS
+========================================================= */
+
+function renderCategories() {
+  const visibleCategories =
+    categoryOrder.filter(
+      category =>
+        products.some(
+          product =>
+            product.category === category &&
+            product.active
+        )
+    );
+
+  const categories = [
+    "Todos",
+    ...visibleCategories
+  ];
+
+  el("categories").innerHTML =
+    categories
+      .map(category => `
+        <button
+          class="category-btn ${
+            activeCategory === category
+              ? "active"
+              : ""
+          }"
+          data-category="${escapeHTML(category)}"
+        >
+          ${escapeHTML(category)}
+        </button>
+      `)
+      .join("");
+
+  document
+    .querySelectorAll("[data-category]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          activeCategory =
+            button.dataset.category;
+
+          renderCategories();
+          renderProducts();
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   CARDÁPIO
+========================================================= */
+
 function renderProducts() {
-  el("admin-products")
-    .innerHTML =
-    categoryOrder
+  if (!el("menu")) {
+    return;
+  }
+
+  const activeProducts =
+    products.filter(
+      product =>
+        product.active
+    );
+
+  if (!activeProducts.length) {
+    el("menu").innerHTML = "";
+    return;
+  }
+
+  const sections =
+    (
+      activeCategory === "Todos"
+        ? categoryOrder
+        : [activeCategory]
+    )
+      .filter(
+        category =>
+          activeProducts.some(
+            product =>
+              product.category === category
+          )
+      );
+
+  el("menu").innerHTML =
+    sections
       .map(category => {
         const items =
-          products.filter(
+          activeProducts.filter(
             product =>
-              product.category ===
-              category
+              product.category === category
           );
 
-        if (!items.length) {
-          return "";
-        }
-
         return `
-          <div class="admin-category">
+          <section class="menu-section">
 
-            <h3>
+            <h2>
               ${escapeHTML(category)}
-            </h3>
+            </h2>
 
-            ${
-              items
-                .map(
-                  product => `
-                    <div class="admin-product">
+            <div class="product-grid">
 
-                      <div class="admin-product-info">
+              ${items
+                .map(product => {
 
-                        ${
-                          product.image_url
-                            ? `
-                              <img
-                                src="${escapeHTML(product.image_url)}"
-                                alt="${escapeHTML(product.name)}"
-                                class="admin-product-thumb"
-                              >
-                            `
-                            : ""
-                        }
+                  const image =
+                    product.image_url
+                      ? `
+                        <div class="product-image-wrap">
+                          <img
+                            class="product-image"
+                            src="${escapeHTML(product.image_url)}"
+                            alt="${escapeHTML(product.name)}"
+                            loading="lazy"
+                          >
+                        </div>
+                      `
+                      : `
+                        <div class="product-image-wrap product-image-placeholder">
+                          <span>
+                            ${categoryIcon(product.category)}
+                          </span>
+                        </div>
+                      `;
 
-                        <div>
+                  return `
+                    <article class="product">
 
-                          <div class="admin-product-name">
+                      ${image}
 
-                            <strong>
-                              ${escapeHTML(product.name)}
-                            </strong>
+                      <div class="product-content">
 
-                            <span
-                              class="product-status ${
-                                product.active
-                                  ? "product-active"
-                                  : "product-inactive"
-                              }"
-                            >
-                              ${
-                                product.active
-                                  ? "Disponível"
-                                  : "Indisponível"
-                              }
-                            </span>
+                        <div class="product-info">
 
-                          </div>
+                          <h3>
+                            ${escapeHTML(product.name)}
+                          </h3>
 
                           ${
                             product.description
                               ? `
-                                <p class="admin-product-description">
+                                <p>
                                   ${escapeHTML(product.description)}
                                 </p>
                               `
                               : ""
                           }
 
-                          <span class="admin-product-price">
+                          <div class="price">
                             ${money(product.price)}
-                          </span>
+                          </div>
 
                         </div>
 
-                      </div>
-
-
-                      <div class="admin-product-actions">
-
                         <button
-                          class="secondary-btn"
-                          data-product-edit="${product.id}"
-                        >
-                          ✏️ Editar
-                        </button>
-
-                        <button
-                          class="secondary-btn"
-                          data-product-toggle="${product.id}"
-                        >
+                          class="primary-btn product-add-btn"
+                          data-add="${product.id}"
                           ${
-                            product.active
-                              ? "Desativar"
-                              : "Ativar"
+                            storeStatus !== "open"
+                              ? "disabled"
+                              : ""
                           }
-                        </button>
-
-                        <button
-                          class="danger-btn"
-                          data-product-delete="${product.id}"
                         >
-                          🗑️ Excluir
+                          Adicionar
                         </button>
 
                       </div>
 
-                    </div>
-                  `
-                )
-                .join("")
-            }
+                    </article>
+                  `;
+                })
+                .join("")}
 
-          </div>
+            </div>
+
+          </section>
         `;
       })
       .join("");
 
-  bindProductButtons();
-}
-
-
-function bindProductButtons() {
   document
-    .querySelectorAll(
-      "[data-product-edit]"
-    )
+    .querySelectorAll("[data-add]")
     .forEach(button => {
       button.addEventListener(
         "click",
         () => {
-          openEditProduct(
-            button.dataset
-              .productEdit
-          );
-        }
-      );
-    });
-
-
-  document
-    .querySelectorAll(
-      "[data-product-toggle]"
-    )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        async () => {
           const id =
-            button.dataset
-              .productToggle;
+            button.dataset.add;
 
-          const product =
-            products.find(
-              item =>
-                String(item.id) ===
-                String(id)
-            );
+          cart[id] =
+            (cart[id] || 0) + 1;
 
-          if (!product) {
-            return;
-          }
-
-          const {
-            error
-          } =
-            await db
-              .from("products")
-              .update({
-                active:
-                  !product.active
-              })
-              .eq(
-                "id",
-                id
-              );
-
-          if (error) {
-            console.error(error);
-
-            alert(
-              "Não foi possível alterar a disponibilidade do produto."
-            );
-
-            return;
-          }
-
-          await loadProducts();
-        }
-      );
-    });
-
-
-  document
-    .querySelectorAll(
-      "[data-product-delete]"
-    )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset
-              .productDelete;
-
-          const product =
-            products.find(
-              item =>
-                String(item.id) ===
-                String(id)
-            );
-
-          if (!product) {
-            return;
-          }
-
-          const confirmed =
-            confirm(
-              `Deseja realmente excluir "${product.name}"?`
-            );
-
-          if (!confirmed) {
-            return;
-          }
-
-          if (product.image_url) {
-            await deleteImageFromStorage(
-              product.image_url
-            );
-          }
-
-          const {
-            error
-          } =
-            await db
-              .from("products")
-              .delete()
-              .eq(
-                "id",
-                id
-              );
-
-          if (error) {
-            console.error(error);
-
-            alert(
-              "Esse produto não pôde ser excluído. Se ele já estiver vinculado a um pedido antigo, apenas desative o produto."
-            );
-
-            return;
-          }
-
-          await loadProducts();
+          renderCart();
         }
       );
     });
 }
 
 
-/* =========================================================
-   FOTO DO PRODUTO
-========================================================= */
-
-el("product-image")
-  .addEventListener(
-    "change",
-    event => {
-      const file =
-        event.target.files?.[0];
-
-      if (!file) {
-        return;
-      }
-
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp"
-      ];
-
-      if (
-        !allowedTypes.includes(
-          file.type
-        )
-      ) {
-        el("product-form-error")
-          .textContent =
-          "Use uma imagem JPG, PNG ou WebP.";
-
-        el("product-image").value =
-          "";
-
-        return;
-      }
-
-      if (
-        file.size >
-        5 * 1024 * 1024
-      ) {
-        el("product-form-error")
-          .textContent =
-          "A imagem precisa ter no máximo 5 MB.";
-
-        el("product-image").value =
-          "";
-
-        return;
-      }
-
-      el("product-form-error")
-        .textContent =
-        "";
-
-      selectedImageFile =
-        file;
-
-      removeCurrentImage =
-        false;
-
-      const previewURL =
-        URL.createObjectURL(
-          file
-        );
-
-      showImagePreview(
-        previewURL
-      );
-    }
-  );
-
-
-el("remove-product-image-btn")
-  .addEventListener(
-    "click",
-    () => {
-      selectedImageFile =
-        null;
-
-      el("product-image").value =
-        "";
-
-      removeCurrentImage =
-        true;
-
-      hideImagePreview();
-    }
-  );
-
-
-function showImagePreview(url) {
-  el("product-image-preview")
-    .src =
-    url;
-
-  el("product-image-preview-box")
-    .classList
-    .remove("hidden");
-}
-
-
-function hideImagePreview() {
-  el("product-image-preview")
-    .src =
-    "";
-
-  el("product-image-preview-box")
-    .classList
-    .add("hidden");
-}
-
-
-async function uploadProductImage(
-  file,
-  productName
-) {
-  if (!file) {
-    return null;
-  }
-
-  const extension =
-    file.name
-      .split(".")
-      .pop()
-      .toLowerCase();
-
-  const safeName =
-    productName
-      .normalize("NFD")
-      .replace(
-        /[\u0300-\u036f]/g,
-        ""
-      )
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]+/g,
-        "-"
-      )
-      .replace(
-        /^-+|-+$/g,
-        ""
-      );
-
-  const fileName =
-    `${Date.now()}-${safeName}.${extension}`;
-
-  const {
-    error
-  } =
-    await db.storage
-      .from("product-images")
-      .upload(
-        fileName,
-        file,
-        {
-          cacheControl:
-            "3600",
-
-          upsert:
-            false
-        }
-      );
-
-  if (error) {
-    console.error(
-      "Erro no upload:",
-      error
-    );
-
-    throw new Error(
-      "Não foi possível enviar a foto."
-    );
-  }
-
-  const {
-    data
-  } =
-    db.storage
-      .from("product-images")
-      .getPublicUrl(
-        fileName
-      );
-
-  return data.publicUrl;
-}
-
-
-function getStoragePathFromURL(
-  imageURL
-) {
-  if (!imageURL) {
-    return null;
-  }
-
-  const marker =
-    "/storage/v1/object/public/product-images/";
-
-  const index =
-    imageURL.indexOf(
-      marker
-    );
-
-  if (index === -1) {
-    return null;
-  }
-
-  return decodeURIComponent(
-    imageURL.substring(
-      index + marker.length
-    )
-  );
-}
-
-
-async function deleteImageFromStorage(
-  imageURL
-) {
-  const path =
-    getStoragePathFromURL(
-      imageURL
-    );
-
-  if (!path) {
-    return;
-  }
-
-  const {
-    error
-  } =
-    await db.storage
-      .from("product-images")
-      .remove([
-        path
-      ]);
-
-  if (error) {
-    console.error(
-      "Erro ao excluir imagem:",
-      error
-    );
-  }
-}
-
-
-/* =========================================================
-   NOVO PRODUTO
-========================================================= */
-
-el("new-product-btn")
-  .addEventListener(
-    "click",
-    () => {
-      resetProductForm();
-
-      el("product-form-title")
-        .textContent =
-        "Novo produto";
-
-      el("product-form")
-        .classList
-        .remove("hidden");
-
-      el("product-form")
-        .scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
-    }
-  );
-
-
-function resetProductForm() {
-  el("editing-product-id").value =
-    "";
-
-  el("editing-product-image-url")
-    .value =
-    "";
-
-  el("product-category").value =
-    "";
-
-  el("product-name").value =
-    "";
-
-  el("product-description").value =
-    "";
-
-  el("product-price").value =
-    "";
-
-  el("product-image").value =
-    "";
-
-  el("product-form-error")
-    .textContent =
-    "";
-
-  selectedImageFile =
-    null;
-
-  removeCurrentImage =
-    false;
-
-  hideImagePreview();
-}
-
-
-/* =========================================================
-   EDITAR PRODUTO
-========================================================= */
-
-function openEditProduct(id) {
-  const product =
-    products.find(
-      item =>
-        String(item.id) ===
-        String(id)
-    );
-
-  if (!product) {
-    return;
-  }
-
-  el("editing-product-id").value =
-    product.id;
-
-  el("editing-product-image-url")
-    .value =
-    product.image_url || "";
-
-  el("product-category").value =
-    product.category;
-
-  el("product-name").value =
-    product.name;
-
-  el("product-description").value =
-    product.description || "";
-
-  el("product-price").value =
-    Number(product.price)
-      .toFixed(2);
-
-  el("product-image").value =
-    "";
-
-  selectedImageFile =
-    null;
-
-  removeCurrentImage =
-    false;
-
-  if (product.image_url) {
-    showImagePreview(
-      product.image_url
-    );
-  } else {
-    hideImagePreview();
-  }
-
-  el("product-form-title")
-    .textContent =
-    "Editar produto";
-
-  el("product-form-error")
-    .textContent =
-    "";
-
-  el("product-form")
-    .classList
-    .remove("hidden");
-
-  el("product-form")
-    .scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
-}
-
-
-/* =========================================================
-   CANCELAR PRODUTO
-========================================================= */
-
-el("cancel-product-btn")
-  .addEventListener(
-    "click",
-    () => {
-      resetProductForm();
-
-      el("product-form")
-        .classList
-        .add("hidden");
-    }
-  );
-
-
-/* =========================================================
-   SALVAR PRODUTO
-========================================================= */
-
-el("save-product-btn")
-  .addEventListener(
-    "click",
-    async () => {
-      const editingId =
-        el("editing-product-id")
-          .value;
-
-      const currentImageURL =
-        el("editing-product-image-url")
-          .value;
-
-      const category =
-        el("product-category")
-          .value;
-
-      const name =
-        el("product-name")
-          .value
-          .trim();
-
-      const description =
-        el("product-description")
-          .value
-          .trim();
-
-      const price =
-        Number(
-          el("product-price")
-            .value
-        );
-
-      el("product-form-error")
-        .textContent =
-        "";
-
-      if (!category) {
-        el("product-form-error")
-          .textContent =
-          "Selecione a categoria.";
-
-        return;
-      }
-
-      if (!name) {
-        el("product-form-error")
-          .textContent =
-          "Digite o nome do produto.";
-
-        return;
-      }
-
-      if (
-        Number.isNaN(price) ||
-        price <= 0
-      ) {
-        el("product-form-error")
-          .textContent =
-          "Digite um preço válido.";
-
-        return;
-      }
-
-      el("save-product-btn")
-        .disabled =
-        true;
-
-      el("save-product-btn")
-        .textContent =
-        "Salvando...";
-
-      try {
-        let imageURL =
-          currentImageURL || null;
-
-        if (selectedImageFile) {
-          const newImageURL =
-            await uploadProductImage(
-              selectedImageFile,
-              name
-            );
-
-          if (
-            currentImageURL &&
-            newImageURL !==
-              currentImageURL
-          ) {
-            await deleteImageFromStorage(
-              currentImageURL
-            );
-          }
-
-          imageURL =
-            newImageURL;
-        }
-
-        if (
-          removeCurrentImage &&
-          currentImageURL
-        ) {
-          await deleteImageFromStorage(
-            currentImageURL
-          );
-
-          imageURL =
-            null;
-        }
-
-        if (editingId) {
-          await updateProduct({
-            editingId,
-            category,
-            name,
-            description,
-            price,
-            imageURL
-          });
-        } else {
-          await createProduct({
-            category,
-            name,
-            description,
-            price,
-            imageURL
-          });
-        }
-
-      } catch (error) {
-        console.error(error);
-
-        el("product-form-error")
-          .textContent =
-          error.message ||
-          "Não foi possível salvar o produto.";
-
-      } finally {
-        el("save-product-btn")
-          .disabled =
-          false;
-
-        el("save-product-btn")
-          .textContent =
-          "Salvar produto";
-      }
-    }
-  );
-
-
-async function createProduct({
-  category,
-  name,
-  description,
-  price,
-  imageURL
-}) {
-  const productsInCategory =
-    products.filter(
-      product =>
-        product.category ===
-        category
-    );
-
-  const maxSort =
-    productsInCategory.length
-      ? Math.max(
-          ...productsInCategory
-            .map(
-              product =>
-                Number(
-                  product.sort_order
-                ) || 0
-            )
-        )
-      : categoryBaseSort(
-          category
-        );
-
-  const sortOrder =
-    maxSort + 10;
-
-  const {
-    error
-  } =
-    await db
-      .from("products")
-      .insert({
-        category,
-        name,
-        description:
-          description || null,
-        price,
-        image_url:
-          imageURL,
-        active:
-          true,
-        sort_order:
-          sortOrder
-      });
-
-  if (error) {
-    console.error(error);
-
-    if (
-      error.code ===
-      "23505"
-    ) {
-      throw new Error(
-        "Já existe um produto com esse nome."
-      );
-    }
-
-    throw new Error(
-      "Não foi possível cadastrar o produto."
-    );
-  }
-
-  resetProductForm();
-
-  el("product-form")
-    .classList
-    .add("hidden");
-
-  await loadProducts();
-
-  alert(
-    "Produto cadastrado com sucesso!"
-  );
-}
-
-
-async function updateProduct({
-  editingId,
-  category,
-  name,
-  description,
-  price,
-  imageURL
-}) {
-  const oldProduct =
-    products.find(
-      item =>
-        String(item.id) ===
-        String(editingId)
-    );
-
-  let sortOrder =
-    oldProduct
-      ? oldProduct.sort_order
-      : 0;
-
-  if (
-    oldProduct &&
-    oldProduct.category !==
-      category
-  ) {
-    const productsInCategory =
-      products.filter(
-        product =>
-          product.category ===
-          category
-      );
-
-    const maxSort =
-      productsInCategory.length
-        ? Math.max(
-            ...productsInCategory
-              .map(
-                product =>
-                  Number(
-                    product.sort_order
-                  ) || 0
-              )
-          )
-        : categoryBaseSort(
-            category
-          );
-
-    sortOrder =
-      maxSort + 10;
-  }
-
-  const {
-    error
-  } =
-    await db
-      .from("products")
-      .update({
-        category,
-        name,
-        description:
-          description || null,
-        price,
-        image_url:
-          imageURL,
-        sort_order:
-          sortOrder
-      })
-      .eq(
-        "id",
-        editingId
-      );
-
-  if (error) {
-    console.error(error);
-
-    if (
-      error.code ===
-      "23505"
-    ) {
-      throw new Error(
-        "Já existe outro produto com esse nome."
-      );
-    }
-
-    throw new Error(
-      "Não foi possível editar o produto."
-    );
-  }
-
-  resetProductForm();
-
-  el("product-form")
-    .classList
-    .add("hidden");
-
-  await loadProducts();
-
-  alert(
-    "Produto atualizado com sucesso!"
-  );
-}
-
-
-function categoryBaseSort(category) {
-  const bases = {
-    "Cachorro-quente": 0,
-    "Pastéis": 100,
-    "Caldos": 200,
-    "Porções": 300
+function categoryIcon(category) {
+  const icons = {
+    "Cachorro-quente": "🌭",
+    "Pastéis": "🥟",
+    "Caldos": "🥣",
+    "Porções": "🍟"
   };
 
-  return bases[category] || 0;
+  return icons[category] || "🍔";
 }
 
 
@@ -1300,631 +377,661 @@ function categoryBaseSort(category) {
 ========================================================= */
 
 async function loadNeighborhoods() {
-  const {
-    data,
-    error
-  } =
-    await db
-      .from("neighborhoods")
-      .select("*")
-      .order("name");
+  try {
+    const { data, error } =
+      await db
+        .from("neighborhoods")
+        .select("*")
+        .eq("active", true)
+        .order("name");
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    neighborhoods =
+      data || [];
+
+    el("neighborhood").innerHTML =
+      `
+        <option value="">
+          Selecione o bairro
+        </option>
+      ` +
+      neighborhoods
+        .map(neighborhood => `
+          <option value="${neighborhood.id}">
+            ${escapeHTML(neighborhood.name)}
+            •
+            ${money(neighborhood.fee)}
+          </option>
+        `)
+        .join("");
+
+    renderCart();
+
+  } catch (error) {
     console.error(
       "Erro ao carregar bairros:",
       error
     );
-
-    el("admin-neighborhoods")
-      .innerHTML =
-      "<p>Erro ao carregar bairros.</p>";
-
-    return;
   }
-
-  neighborhoods =
-    data || [];
-
-  renderNeighborhoods();
 }
-
-
-function renderNeighborhoods() {
-  if (!neighborhoods.length) {
-    el("admin-neighborhoods")
-      .innerHTML =
-      "<p>Nenhum bairro cadastrado.</p>";
-
-    return;
-  }
-
-  el("admin-neighborhoods")
-    .innerHTML =
-    neighborhoods
-      .map(
-        neighborhood => `
-          <div class="admin-neighborhood">
-
-            <div>
-
-              <strong>
-                ${escapeHTML(neighborhood.name)}
-              </strong>
-
-              <br>
-
-              <small>
-                ${money(neighborhood.fee)}
-              </small>
-
-            </div>
-
-
-            <div class="order-actions">
-
-              <button
-                class="secondary-btn"
-                data-neighborhood-toggle="${neighborhood.id}"
-              >
-                ${
-                  neighborhood.active
-                    ? "Desativar"
-                    : "Ativar"
-                }
-              </button>
-
-
-              <button
-                class="danger-btn"
-                data-neighborhood-delete="${neighborhood.id}"
-              >
-                Excluir
-              </button>
-
-            </div>
-
-          </div>
-        `
-      )
-      .join("");
-
-
-  document
-    .querySelectorAll(
-      "[data-neighborhood-toggle]"
-    )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset
-              .neighborhoodToggle;
-
-          const neighborhood =
-            neighborhoods.find(
-              item =>
-                String(item.id) ===
-                String(id)
-            );
-
-          if (!neighborhood) {
-            return;
-          }
-
-          const {
-            error
-          } =
-            await db
-              .from("neighborhoods")
-              .update({
-                active:
-                  !neighborhood.active
-              })
-              .eq(
-                "id",
-                id
-              );
-
-          if (error) {
-            console.error(error);
-
-            alert(
-              "Não foi possível alterar o bairro."
-            );
-
-            return;
-          }
-
-          await loadNeighborhoods();
-        }
-      );
-    });
-
-
-  document
-    .querySelectorAll(
-      "[data-neighborhood-delete]"
-    )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset
-              .neighborhoodDelete;
-
-          const confirmed =
-            confirm(
-              "Tem certeza que deseja excluir este bairro?"
-            );
-
-          if (!confirmed) {
-            return;
-          }
-
-          const {
-            error
-          } =
-            await db
-              .from("neighborhoods")
-              .delete()
-              .eq(
-                "id",
-                id
-              );
-
-          if (error) {
-            console.error(error);
-
-            alert(
-              "Não foi possível excluir o bairro. Se ele já estiver vinculado a pedidos, apenas desative."
-            );
-
-            return;
-          }
-
-          await loadNeighborhoods();
-        }
-      );
-    });
-}
-
-
-el("add-neighborhood-btn")
-  .addEventListener(
-    "click",
-    async () => {
-      const name =
-        el("new-neighborhood")
-          .value
-          .trim();
-
-      const fee =
-        Number(
-          el("new-fee")
-            .value
-        );
-
-      if (!name) {
-        alert(
-          "Digite o nome do bairro."
-        );
-
-        return;
-      }
-
-      if (
-        Number.isNaN(fee) ||
-        fee < 0
-      ) {
-        alert(
-          "Digite uma taxa válida."
-        );
-
-        return;
-      }
-
-      const {
-        error
-      } =
-        await db
-          .from("neighborhoods")
-          .insert({
-            name,
-            fee,
-            active: true
-          });
-
-      if (error) {
-        console.error(error);
-
-        alert(
-          "Não foi possível cadastrar o bairro. Confira se ele já existe."
-        );
-
-        return;
-      }
-
-      el("new-neighborhood")
-        .value =
-        "";
-
-      el("new-fee")
-        .value =
-        "";
-
-      await loadNeighborhoods();
-    }
-  );
 
 
 /* =========================================================
-   PEDIDOS
+   CARRINHO
 ========================================================= */
 
-async function loadOrders() {
-  const {
-    data,
-    error
-  } =
-    await db
-      .from("orders")
-      .select(`
-        *,
-        neighborhood:neighborhoods(name),
-        items:order_items(*)
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      )
-      .limit(100);
+function selectedFee() {
+  const fulfillment =
+    document.querySelector(
+      'input[name="fulfillment"]:checked'
+    )?.value || "delivery";
 
-  if (error) {
-    console.error(
-      "Erro ao carregar pedidos:",
-      error
+  if (fulfillment === "pickup") {
+    return 0;
+  }
+
+  const neighborhoodId =
+    el("neighborhood").value;
+
+  const neighborhood =
+    neighborhoods.find(
+      item =>
+        String(item.id) ===
+        String(neighborhoodId)
     );
 
-    el("orders")
-      .innerHTML =
-      "<p>Erro ao carregar pedidos.</p>";
-
-    return;
-  }
-
-  renderOrders(
-    data || []
-  );
+  return neighborhood
+    ? Number(neighborhood.fee)
+    : 0;
 }
 
 
-function statusLabel(status) {
-  const labels = {
-    received:
-      "Recebido",
+function subtotal() {
+  return Object
+    .entries(cart)
+    .reduce(
+      (
+        total,
+        [productId, quantity]
+      ) => {
 
-    preparing:
-      "Preparando",
+        const product =
+          products.find(
+            item =>
+              String(item.id) ===
+              String(productId)
+          );
 
-    ready:
-      "Pronto",
+        if (!product) {
+          return total;
+        }
 
-    delivering:
-      "Saiu para entrega",
-
-    completed:
-      "Concluído",
-
-    cancelled:
-      "Cancelado"
-  };
-
-  return labels[status] ||
-    status;
+        return total +
+          Number(product.price) *
+          quantity;
+      },
+      0
+    );
 }
 
 
-function renderOrders(orders) {
-  if (!orders.length) {
-    el("orders")
-      .innerHTML =
-      "<p>Nenhum pedido recebido ainda.</p>";
+function renderCart() {
+  const cartItems =
+    Object
+      .entries(cart)
+      .filter(
+        ([, quantity]) =>
+          quantity > 0
+      );
 
-    return;
-  }
+  let itemCount = 0;
 
-  el("orders")
-    .innerHTML =
-    orders
-      .map(order => {
-        const createdAt =
-          new Date(
-            order.created_at
-          )
-            .toLocaleString(
-              "pt-BR"
+  const html =
+    cartItems
+      .map(
+        ([productId, quantity]) => {
+
+          const product =
+            products.find(
+              item =>
+                String(item.id) ===
+                String(productId)
             );
 
-        const address =
-          order.fulfillment ===
-          "pickup"
-            ? "Retirada no local"
-            : `
-              ${escapeHTML(order.street || "")},
-              ${escapeHTML(order.number || "")}
+          if (!product) {
+            return "";
+          }
 
-              <br>
+          itemCount += quantity;
 
-              ${
-                escapeHTML(
-                  order.neighborhood
-                    ?.name || ""
-                )
-              }
-
-              ${
-                order.complement
-                  ? `
-                    <br>
-                    ${escapeHTML(order.complement)}
-                  `
-                  : ""
-              }
-            `;
-
-        const items =
-          (order.items || [])
-            .map(
-              item => `
-                <div>
-                  ${Number(item.qty)}x
-                  ${escapeHTML(item.name)}
-                </div>
-              `
-            )
-            .join("");
-
-        return `
-          <div class="order-card">
-
-            <div class="order-head">
+          return `
+            <div class="cart-row">
 
               <div>
 
                 <strong>
-                  Pedido #${order.id}
+                  ${escapeHTML(product.name)}
                 </strong>
 
                 <br>
 
                 <small>
-                  ${createdAt}
+                  ${quantity} × ${money(product.price)}
                 </small>
 
               </div>
 
+              <div class="qty-controls">
 
-              <span class="badge">
+                <button
+                  class="qty-btn"
+                  data-minus="${productId}"
+                >
+                  −
+                </button>
 
-                ${statusLabel(order.status)}
+                <button
+                  class="qty-btn"
+                  data-plus="${productId}"
+                >
+                  +
+                </button>
 
-              </span>
-
-            </div>
-
-
-            <p>
-
-              <strong>
-                ${escapeHTML(order.customer_name)}
-              </strong>
-
-              <br>
-
-              ${escapeHTML(order.customer_phone)}
-
-            </p>
-
-
-            <p>
-              ${address}
-            </p>
-
-
-            <p>
-
-              <strong>
-                Itens:
-              </strong>
-
-              <br>
-
-              ${items}
-
-            </p>
-
-
-            ${
-              order.notes
-                ? `
-                  <p>
-
-                    <strong>
-                      Observações:
-                    </strong>
-
-                    <br>
-
-                    ${escapeHTML(order.notes)}
-
-                  </p>
-                `
-                : ""
-            }
-
-
-            <p>
-
-              Pagamento:
-
-              <strong>
-                ${escapeHTML(order.payment_method)}
-              </strong>
-
-            </p>
-
-
-            <p>
-
-              Total:
-
-              <strong>
-                ${money(order.total)}
-              </strong>
-
-            </p>
-
-
-            <div class="order-actions">
-
-              <button
-                class="secondary-btn"
-                data-order-status="preparing"
-                data-order-id="${order.id}"
-              >
-                Preparando
-              </button>
-
-
-              <button
-                class="secondary-btn"
-                data-order-status="ready"
-                data-order-id="${order.id}"
-              >
-                Pronto
-              </button>
-
-
-              ${
-                order.fulfillment ===
-                "delivery"
-                  ? `
-                    <button
-                      class="secondary-btn"
-                      data-order-status="delivering"
-                      data-order-id="${order.id}"
-                    >
-                      Saiu para entrega
-                    </button>
-                  `
-                  : ""
-              }
-
-
-              <button
-                class="secondary-btn"
-                data-order-status="completed"
-                data-order-id="${order.id}"
-              >
-                Concluir
-              </button>
-
-
-              <button
-                class="danger-btn"
-                data-order-status="cancelled"
-                data-order-id="${order.id}"
-              >
-                Cancelar
-              </button>
+              </div>
 
             </div>
-
-          </div>
-        `;
-      })
+          `;
+        }
+      )
       .join("");
 
+  el("cart-items").innerHTML =
+    html ||
+    "<p>Seu carrinho está vazio.</p>";
+
+  el("cart-count").textContent =
+    `${itemCount} ${
+      itemCount === 1
+        ? "item"
+        : "itens"
+    }`;
+
+  const sub =
+    subtotal();
+
+  const fee =
+    selectedFee();
+
+  const total =
+    sub + fee;
+
+  el("subtotal").textContent =
+    money(sub);
+
+  el("delivery-fee").textContent =
+    money(fee);
+
+  el("total").textContent =
+    money(total);
+
+  el("checkout-subtotal").textContent =
+    money(sub);
+
+  el("checkout-fee").textContent =
+    money(fee);
+
+  el("checkout-total").textContent =
+    money(total);
 
   document
-    .querySelectorAll(
-      "[data-order-status]"
-    )
+    .querySelectorAll("[data-minus]")
     .forEach(button => {
       button.addEventListener(
         "click",
-        async () => {
-          const orderId =
-            button.dataset
-              .orderId;
+        () => {
+          const id =
+            button.dataset.minus;
 
-          const status =
-            button.dataset
-              .orderStatus;
-
-          const {
-            error
-          } =
-            await db
-              .from("orders")
-              .update({
-                status
-              })
-              .eq(
-                "id",
-                orderId
-              );
-
-          if (error) {
-            console.error(error);
-
-            alert(
-              "Não foi possível atualizar o pedido."
+          cart[id] =
+            Math.max(
+              0,
+              (cart[id] || 0) - 1
             );
 
-            return;
-          }
+          renderCart();
+        }
+      );
+    });
 
-          await loadOrders();
+  document
+    .querySelectorAll("[data-plus]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          const id =
+            button.dataset.plus;
+
+          cart[id] =
+            (cart[id] || 0) + 1;
+
+          renderCart();
         }
       );
     });
 }
 
 
-el("refresh-orders-btn")
+/* =========================================================
+   CONTINUAR PEDIDO
+========================================================= */
+
+el("continue-btn")
   .addEventListener(
     "click",
-    loadOrders
+    () => {
+
+      el("cart-error").textContent =
+        "";
+
+      if (storeStatus !== "open") {
+        el("cart-error").textContent =
+          "A loja não está recebendo pedidos agora.";
+
+        return;
+      }
+
+      if (subtotal() <= 0) {
+        el("cart-error").textContent =
+          "Adicione pelo menos um item.";
+
+        return;
+      }
+
+      el("checkout")
+        .classList
+        .remove("hidden");
+
+      el("checkout")
+        .scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+    }
   );
 
 
 /* =========================================================
-   ATUALIZAÇÃO AUTOMÁTICA
+   DELIVERY / RETIRADA
 ========================================================= */
 
-setInterval(
-  async () => {
-    const {
-      data: { session }
-    } =
-      await db.auth
-        .getSession();
+document
+  .querySelectorAll(
+    'input[name="fulfillment"]'
+  )
+  .forEach(radio => {
 
-    if (session) {
-      loadOrders();
-    }
-  },
-  15000
-);
+    radio.addEventListener(
+      "change",
+      () => {
+
+        const fulfillment =
+          document.querySelector(
+            'input[name="fulfillment"]:checked'
+          ).value;
+
+        el("delivery-fields")
+          .classList
+          .toggle(
+            "hidden",
+            fulfillment === "pickup"
+          );
+
+        renderCart();
+      }
+    );
+  });
+
+
+el("neighborhood")
+  .addEventListener(
+    "change",
+    renderCart
+  );
 
 
 /* =========================================================
-   INICIAR
+   CONFIRMAR PEDIDO
 ========================================================= */
 
-checkSession();
+el("confirm-btn")
+  .addEventListener(
+    "click",
+    async () => {
+
+      const customerName =
+        el("customer-name")
+          .value
+          .trim();
+
+      const customerPhone =
+        el("customer-phone")
+          .value
+          .trim();
+
+      const paymentMethod =
+        el("payment").value;
+
+      const fulfillment =
+        document.querySelector(
+          'input[name="fulfillment"]:checked'
+        ).value;
+
+      const neighborhoodId =
+        el("neighborhood").value;
+
+      const street =
+        el("street")
+          .value
+          .trim();
+
+      const number =
+        el("number")
+          .value
+          .trim();
+
+      const complement =
+        el("complement")
+          .value
+          .trim();
+
+      const notes =
+        el("notes")
+          .value
+          .trim();
+
+      el("checkout-error").textContent =
+        "";
+
+      if (
+        !customerName ||
+        !customerPhone ||
+        !paymentMethod
+      ) {
+        el("checkout-error").textContent =
+          "Preencha nome, WhatsApp e forma de pagamento.";
+
+        return;
+      }
+
+      if (
+        fulfillment === "delivery" &&
+        (
+          !neighborhoodId ||
+          !street ||
+          !number
+        )
+      ) {
+        el("checkout-error").textContent =
+          "Preencha bairro, rua e número.";
+
+        return;
+      }
+
+      if (storeStatus !== "open") {
+        el("checkout-error").textContent =
+          "A loja não está recebendo pedidos agora.";
+
+        return;
+      }
+
+      const orderItems =
+        Object
+          .entries(cart)
+          .filter(
+            ([, quantity]) =>
+              quantity > 0
+          )
+          .map(
+            ([productId, quantity]) => {
+
+              const product =
+                products.find(
+                  item =>
+                    String(item.id) ===
+                    String(productId)
+                );
+
+              return {
+                product_id:
+                  product.id,
+
+                name:
+                  product.name,
+
+                qty:
+                  quantity,
+
+                unit_price:
+                  Number(product.price)
+              };
+            }
+          );
+
+      if (!orderItems.length) {
+        el("checkout-error").textContent =
+          "Seu carrinho está vazio.";
+
+        return;
+      }
+
+      const sub =
+        subtotal();
+
+      const fee =
+        selectedFee();
+
+      const orderPayload = {
+        customer_name:
+          customerName,
+
+        customer_phone:
+          customerPhone,
+
+        fulfillment,
+
+        neighborhood_id:
+          fulfillment === "delivery"
+            ? Number(neighborhoodId)
+            : null,
+
+        street:
+          fulfillment === "delivery"
+            ? street
+            : null,
+
+        number:
+          fulfillment === "delivery"
+            ? number
+            : null,
+
+        complement:
+          fulfillment === "delivery"
+            ? complement || null
+            : null,
+
+        payment_method:
+          paymentMethod,
+
+        notes:
+          notes || null,
+
+        subtotal:
+          sub,
+
+        delivery_fee:
+          fee,
+
+        total:
+          sub + fee,
+
+        status:
+          "received"
+      };
+
+      el("confirm-btn").disabled =
+        true;
+
+      el("confirm-btn").textContent =
+        "Enviando...";
+
+      try {
+
+        const {
+          data: order,
+          error: orderError
+        } =
+          await db
+            .from("orders")
+            .insert(orderPayload)
+            .select()
+            .single();
+
+        if (orderError) {
+          throw orderError;
+        }
+
+        const itemsToInsert =
+          orderItems.map(item => ({
+            ...item,
+            order_id: order.id
+          }));
+
+        const {
+          error: itemsError
+        } =
+          await db
+            .from("order_items")
+            .insert(itemsToInsert);
+
+        if (itemsError) {
+          throw itemsError;
+        }
+
+        cart = {};
+
+        renderCart();
+
+        el("checkout")
+          .classList
+          .add("hidden");
+
+        el("success")
+          .classList
+          .remove("hidden");
+
+        el("success-text").textContent =
+          `Pedido #${order.id} recebido com sucesso. Total: ${money(order.total)}.`;
+
+        el("success")
+          .scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+
+      } catch (error) {
+
+        console.error(
+          "Erro ao criar pedido:",
+          error
+        );
+
+        el("checkout-error").textContent =
+          "Não foi possível enviar o pedido. Tente novamente.";
+
+      } finally {
+
+        el("confirm-btn").disabled =
+          false;
+
+        el("confirm-btn").textContent =
+          "Confirmar pedido";
+      }
+    }
+  );
+
+
+/* =========================================================
+   NOVO PEDIDO
+========================================================= */
+
+el("new-order-btn")
+  .addEventListener(
+    "click",
+    () => {
+
+      el("success")
+        .classList
+        .add("hidden");
+
+      el("customer-name").value =
+        "";
+
+      el("customer-phone").value =
+        "";
+
+      el("street").value =
+        "";
+
+      el("number").value =
+        "";
+
+      el("complement").value =
+        "";
+
+      el("payment").value =
+        "";
+
+      el("notes").value =
+        "";
+
+      el("neighborhood").value =
+        "";
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  );
+
+
+/* =========================================================
+   INICIAR SITE
+========================================================= */
+
+async function startApp() {
+  try {
+    await Promise.all([
+      loadStore(),
+      loadProducts(),
+      loadNeighborhoods()
+    ]);
+
+    renderCart();
+
+  } catch (error) {
+    console.error(
+      "Erro ao iniciar o site:",
+      error
+    );
+
+    el("store-status").textContent =
+      "🔴 Indisponível";
+  }
+}
+
+startApp();
