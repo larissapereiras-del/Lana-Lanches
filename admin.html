@@ -123,11 +123,9 @@
         </div>
 
         <div id="orders">
-
           <p>
             Nenhum pedido recebido ainda.
           </p>
-
         </div>
 
       </section>
@@ -206,8 +204,14 @@
             Novo produto
           </h3>
 
+
           <input
             id="editing-product-id"
+            type="hidden"
+          >
+
+          <input
+            id="editing-product-image-url"
             type="hidden"
           >
 
@@ -276,6 +280,50 @@
           </label>
 
 
+          <!-- FOTO DO PRODUTO -->
+
+          <div class="product-image-field">
+
+            <label>
+              Foto do produto
+
+              <input
+                id="product-image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+              >
+            </label>
+
+            <p class="field-help">
+              Formatos aceitos: JPG, PNG ou WebP. Máximo de 5 MB.
+            </p>
+
+
+            <div
+              id="product-image-preview-box"
+              class="product-image-preview-box hidden"
+            >
+
+              <img
+                id="product-image-preview"
+                class="product-image-preview"
+                src=""
+                alt="Prévia da foto do produto"
+              >
+
+              <button
+                id="remove-product-image-btn"
+                type="button"
+                class="danger-btn"
+              >
+                Remover foto
+              </button>
+
+            </div>
+
+          </div>
+
+
           <div class="product-form-actions">
 
             <button
@@ -293,6 +341,7 @@
             </button>
 
           </div>
+
 
           <p
             id="product-form-error"
@@ -342,6 +391,7 @@
           </button>
 
         </div>
+
 
         <div id="admin-neighborhoods"></div>
 
