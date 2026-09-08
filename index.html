@@ -16,12 +16,21 @@
     content="Faça seu pedido na Lana Lanches."
   >
 
- <link
-  rel="stylesheet"
-  href="./css/style.css"
->
+  <link
+    rel="stylesheet"
+    href="./css/style.css"
+  >
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SUPABASE -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <!-- MERCADO PAGO -->
+  <script
+    src="https://sdk.mercadopago.com/js/v2"
+  ></script>
+
 </head>
 
 <body>
@@ -30,6 +39,7 @@
   <header class="topbar">
 
     <div class="brand">
+
       <h1>
         Lana <span>Lanches</span>
       </h1>
@@ -37,6 +47,7 @@
       <p>
         Sabor que dá água na boca!
       </p>
+
     </div>
 
     <div
@@ -97,26 +108,36 @@
       <div class="summary">
 
         <div>
-          <span>Subtotal</span>
+
+          <span>
+            Subtotal
+          </span>
 
           <strong id="subtotal">
             R$ 0,00
           </strong>
+
         </div>
 
 
         <div>
-          <span>Entrega</span>
+
+          <span>
+            Entrega
+          </span>
 
           <strong id="delivery-fee">
             R$ 0,00
           </strong>
+
         </div>
 
 
         <div class="total">
 
-          <span>Total</span>
+          <span>
+            Total
+          </span>
 
           <strong id="total">
             R$ 0,00
@@ -165,6 +186,7 @@
             id="customer-name"
             type="text"
             placeholder="Seu nome"
+            autocomplete="name"
           >
 
         </label>
@@ -178,6 +200,7 @@
             id="customer-phone"
             type="tel"
             placeholder="(11) 99999-9999"
+            autocomplete="tel"
           >
 
         </label>
@@ -245,6 +268,7 @@
               id="street"
               type="text"
               placeholder="Nome da rua"
+              autocomplete="street-address"
             >
 
           </label>
@@ -280,32 +304,97 @@
       </div>
 
 
-      <!-- PAGAMENTO -->
-      <label>
+      <!-- PAGAMENTO ATUAL -->
+      <!--
+        Este campo será substituído pelo Mercado Pago
+        na próxima atualização do app.js.
 
-        Forma de pagamento
+        Ele permanece temporariamente para não quebrar
+        o funcionamento atual do site.
+      -->
 
-        <select id="payment">
+      <div
+        id="legacy-payment-section"
+      >
 
-          <option value="">
-            Selecione
-          </option>
+        <label>
 
-          <option value="PIX">
-            PIX
-          </option>
+          Forma de pagamento
 
-          <option value="Dinheiro">
-            Dinheiro
-          </option>
+          <select id="payment">
 
-          <option value="Cartão na entrega">
-            Cartão na entrega
-          </option>
+            <option value="">
+              Selecione
+            </option>
 
-        </select>
+            <option value="PIX">
+              PIX
+            </option>
 
-      </label>
+            <option value="Dinheiro">
+              Dinheiro
+            </option>
+
+            <option value="Cartão na entrega">
+              Cartão na entrega
+            </option>
+
+          </select>
+
+        </label>
+
+      </div>
+
+
+      <!-- MERCADO PAGO -->
+      <section
+        id="mercado-pago-section"
+        class="hidden"
+      >
+
+        <div class="payment-header">
+
+          <h3>
+            Pagamento
+          </h3>
+
+          <p>
+            Escolha Pix ou cartão e faça o pagamento com segurança.
+          </p>
+
+        </div>
+
+
+        <!--
+          O Payment Brick será inserido
+          automaticamente aqui pelo app.js
+        -->
+
+        <div
+          id="paymentBrick_container"
+        ></div>
+
+
+        <!-- MENSAGEM DURANTE O PROCESSAMENTO -->
+        <div
+          id="payment-processing"
+          class="hidden"
+        >
+
+          <p>
+            Processando pagamento...
+          </p>
+
+        </div>
+
+
+        <!-- RESULTADO / ERRO DO PAGAMENTO -->
+        <div
+          id="payment-message"
+          class="hidden"
+        ></div>
+
+      </section>
 
 
       <!-- OBSERVAÇÕES -->
@@ -315,7 +404,7 @@
 
         <textarea
           id="notes"
-          placeholder="Ex.: sem milho, sem cebola, troco para R$ 50..."
+          placeholder="Ex.: sem milho, sem cebola..."
         ></textarea>
 
       </label>
@@ -365,6 +454,12 @@
       </div>
 
 
+      <!-- BOTÃO ATUAL -->
+      <!--
+        Também será controlado pelo novo app.js
+        durante a integração do Mercado Pago.
+      -->
+
       <button
         id="confirm-btn"
         class="primary-btn"
@@ -391,11 +486,20 @@
         ✅
       </div>
 
+
       <h2>
         Pedido confirmado!
       </h2>
 
+
       <p id="success-text"></p>
+
+
+      <!-- INFORMAÇÕES DO PAGAMENTO -->
+      <div
+        id="success-payment"
+        class="hidden"
+      ></div>
 
 
       <button
@@ -411,11 +515,11 @@
 
 
   <!-- CONFIGURAÇÃO DO BANCO -->
- <script src="./js/config.js"></script>
+  <script src="./js/config.js"></script>
 
 
   <!-- FUNCIONAMENTO DA LOJA -->
-<script src="./js/app.js"></script>
+  <script src="./js/app.js"></script>
 
 </body>
 
