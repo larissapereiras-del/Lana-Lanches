@@ -80,7 +80,7 @@
     </section>
 
 
-    <!-- PAINEL ADMINISTRATIVO -->
+    <!-- PAINEL -->
 
     <div
       id="admin-panel"
@@ -88,7 +88,7 @@
     >
 
 
-      <!-- 1. PEDIDOS -->
+      <!-- PEDIDOS -->
 
       <section class="admin-card">
 
@@ -122,7 +122,6 @@
 
         </div>
 
-
         <div id="orders">
 
           <p>
@@ -134,7 +133,7 @@
       </section>
 
 
-      <!-- 2. STATUS DA LOJA -->
+      <!-- STATUS DA LOJA -->
 
       <section class="admin-card">
 
@@ -143,7 +142,6 @@
         <p id="admin-store-text">
           Carregando...
         </p>
-
 
         <div class="status-buttons">
 
@@ -173,22 +171,143 @@
       </section>
 
 
-      <!-- 3. DISPONIBILIDADE DO CARDÁPIO -->
+      <!-- CARDÁPIO -->
 
       <section class="admin-card">
 
-        <h2>📋 Disponibilidade do cardápio</h2>
+        <div class="admin-heading">
 
-        <p>
-          Ative ou desative os produtos disponíveis para venda.
-        </p>
+          <div>
+            <h2>📋 Gerenciar cardápio</h2>
+
+            <p>
+              Cadastre, edite, ative ou desative os produtos da loja.
+            </p>
+          </div>
+
+          <button
+            id="new-product-btn"
+            class="primary-btn"
+          >
+            + Novo produto
+          </button>
+
+        </div>
+
+
+        <!-- FORMULÁRIO DE PRODUTO -->
+
+        <div
+          id="product-form"
+          class="product-form hidden"
+        >
+
+          <h3 id="product-form-title">
+            Novo produto
+          </h3>
+
+          <input
+            id="editing-product-id"
+            type="hidden"
+          >
+
+
+          <label>
+            Categoria
+
+            <select id="product-category">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="Cachorro-quente">
+                Cachorro-quente
+              </option>
+
+              <option value="Pastéis">
+                Pastéis
+              </option>
+
+              <option value="Caldos">
+                Caldos
+              </option>
+
+              <option value="Porções">
+                Porções
+              </option>
+
+            </select>
+
+          </label>
+
+
+          <label>
+            Nome do produto
+
+            <input
+              id="product-name"
+              type="text"
+              placeholder="Ex.: Pastel de Queijo"
+            >
+          </label>
+
+
+          <label>
+            Descrição
+
+            <textarea
+              id="product-description"
+              placeholder="Ex.: Mussarela, tomate e orégano"
+            ></textarea>
+          </label>
+
+
+          <label>
+            Preço
+
+            <input
+              id="product-price"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Ex.: 15,00"
+            >
+          </label>
+
+
+          <div class="product-form-actions">
+
+            <button
+              id="save-product-btn"
+              class="primary-btn"
+            >
+              Salvar produto
+            </button>
+
+            <button
+              id="cancel-product-btn"
+              class="secondary-btn"
+            >
+              Cancelar
+            </button>
+
+          </div>
+
+          <p
+            id="product-form-error"
+            class="error"
+          ></p>
+
+        </div>
+
 
         <div id="admin-products"></div>
 
       </section>
 
 
-      <!-- 4. BAIRROS E TAXAS -->
+      <!-- BAIRROS -->
 
       <section class="admin-card">
 
@@ -223,7 +342,6 @@
           </button>
 
         </div>
-
 
         <div id="admin-neighborhoods"></div>
 
