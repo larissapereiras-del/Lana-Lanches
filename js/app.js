@@ -23,7 +23,6 @@ function escapeHTML(value) {
     return "";
   }
 
-
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -39,19 +38,11 @@ function escapeHTML(value) {
 ========================================================= */
 
 let categories = [];
-
 let products = [];
-
 let neighborhoods = [];
 
-
-let storeStatus =
-  "closed";
-
-
-let activeCategory =
-  "Todos";
-
+let storeStatus = "closed";
+let activeCategory = "Todos";
 
 let cart = {};
 
@@ -61,28 +52,17 @@ let cart = {};
    MERCADO PAGO
 ========================================================= */
 
-let mercadoPagoInstance =
-  null;
+let mercadoPagoInstance = null;
 
+let bricksBuilder = null;
 
-let bricksBuilder =
-  null;
+let paymentBrickController = null;
 
+let paymentPublicKey = "";
 
-let paymentBrickController =
-  null;
+let paymentPrepared = false;
 
-
-let paymentPublicKey =
-  "";
-
-
-let paymentPrepared =
-  false;
-
-
-let paymentSubmitting =
-  false;
+let paymentSubmitting = false;
 
 
 
@@ -99,16 +79,9 @@ async function loadStore() {
       error
     } =
       await db
-        .from(
-          "store_settings"
-        )
-        .select(
-          "id,status"
-        )
-        .eq(
-          "id",
-          1
-        )
+        .from("store_settings")
+        .select("id,status")
+        .eq("id", 1)
         .single();
 
 
@@ -148,9 +121,7 @@ async function loadStore() {
 
     el("store-message")
       .classList
-      .remove(
-        "hidden"
-      );
+      .remove("hidden");
   }
 }
 
@@ -159,20 +130,15 @@ async function loadStore() {
 function renderStoreStatus() {
 
   const badge =
-    el(
-      "store-status"
-    );
+    el("store-status");
 
 
   const message =
-    el(
-      "store-message"
-    );
+    el("store-message");
 
 
   if (
-    storeStatus ===
-    "open"
+    storeStatus === "open"
   ) {
 
     badge.textContent =
@@ -181,13 +147,10 @@ function renderStoreStatus() {
 
     message
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
 
   } else if (
-    storeStatus ===
-    "paused"
+    storeStatus === "paused"
   ) {
 
     badge.textContent =
@@ -200,9 +163,7 @@ function renderStoreStatus() {
 
     message
       .classList
-      .remove(
-        "hidden"
-      );
+      .remove("hidden");
 
   } else {
 
@@ -216,9 +177,7 @@ function renderStoreStatus() {
 
     message
       .classList
-      .remove(
-        "hidden"
-      );
+      .remove("hidden");
   }
 
 
@@ -240,14 +199,9 @@ async function loadCategories() {
       error
     } =
       await db
-        .from(
-          "categories"
-        )
+        .from("categories")
         .select("*")
-        .eq(
-          "active",
-          true
-        )
+        .eq("active", true)
         .order(
           "sort_order",
           {
@@ -299,14 +253,9 @@ async function loadProducts() {
       error
     } =
       await db
-        .from(
-          "products"
-        )
+        .from("products")
         .select("*")
-        .eq(
-          "active",
-          true
-        )
+        .eq("active", true)
         .order(
           "sort_order",
           {
@@ -366,8 +315,7 @@ function renderCategories() {
 
 
   if (
-    activeCategory !==
-      "Todos" &&
+    activeCategory !== "Todos" &&
     !visibleCategories.some(
       category =>
         category.name ===
@@ -382,8 +330,7 @@ function renderCategories() {
 
   const buttons = [
     {
-      name:
-        "Todos"
+      name: "Todos"
     },
     ...visibleCategories
   ];
@@ -402,8 +349,7 @@ function renderCategories() {
           return `
             <button
               class="category-btn ${
-                activeCategory ===
-                name
+                activeCategory === name
                   ? "active"
                   : ""
               }"
@@ -424,21 +370,19 @@ function renderCategories() {
     .forEach(
       button => {
 
-        button
-          .addEventListener(
-            "click",
-            () => {
+        button.addEventListener(
+          "click",
+          () => {
 
-              activeCategory =
-                button.dataset
-                  .category;
+            activeCategory =
+              button.dataset.category;
 
 
-              renderCategories();
+            renderCategories();
 
-              renderProducts();
-            }
-          );
+            renderProducts();
+          }
+        );
       }
     );
 }
@@ -455,82 +399,59 @@ function categoryIcon(
 
   const name =
     String(
-      categoryName ||
-      ""
+      categoryName || ""
     )
       .toLowerCase();
 
 
   if (
-    name.includes(
-      "cachorro"
-    )
+    name.includes("cachorro")
   ) {
     return "🌭";
   }
 
 
   if (
-    name.includes(
-      "past"
-    )
+    name.includes("past")
   ) {
     return "🥟";
   }
 
 
   if (
-    name.includes(
-      "caldo"
-    ) ||
-    name.includes(
-      "sopa"
-    )
+    name.includes("caldo") ||
+    name.includes("sopa")
   ) {
     return "🥣";
   }
 
 
   if (
-    name.includes(
-      "porç"
-    ) ||
-    name.includes(
-      "batata"
-    )
+    name.includes("porç") ||
+    name.includes("batata")
   ) {
     return "🍟";
   }
 
 
   if (
-    name.includes(
-      "sobremesa"
-    ) ||
-    name.includes(
-      "doce"
-    )
+    name.includes("sobremesa") ||
+    name.includes("doce")
   ) {
     return "🍰";
   }
 
 
   if (
-    name.includes(
-      "bebida"
-    ) ||
-    name.includes(
-      "refrigerante"
-    )
+    name.includes("bebida") ||
+    name.includes("refrigerante")
   ) {
     return "🥤";
   }
 
 
   if (
-    name.includes(
-      "combo"
-    )
+    name.includes("combo")
   ) {
     return "🍔";
   }
@@ -578,8 +499,7 @@ function renderProducts() {
 
 
   const sections =
-    activeCategory ===
-      "Todos"
+    activeCategory === "Todos"
       ? visibleCategories
       : visibleCategories.filter(
           category =>
@@ -686,8 +606,7 @@ function renderProducts() {
                                 class="primary-btn product-add-btn"
                                 data-add="${product.id}"
                                 ${
-                                  storeStatus !==
-                                  "open"
+                                  storeStatus !== "open"
                                     ? "disabled"
                                     : ""
                                 }
@@ -720,28 +639,26 @@ function renderProducts() {
     .forEach(
       button => {
 
-        button
-          .addEventListener(
-            "click",
-            () => {
+        button.addEventListener(
+          "click",
+          () => {
 
-              const id =
-                button.dataset
-                  .add;
+            const id =
+              button.dataset.add;
 
 
-              cart[id] =
-                (
-                  cart[id] ||
-                  0
-                ) + 1;
+            cart[id] =
+              (
+                cart[id] ||
+                0
+              ) + 1;
 
 
-              invalidatePayment();
+            invalidatePayment();
 
-              renderCart();
-            }
-          );
+            renderCart();
+          }
+        );
       }
     );
 }
@@ -761,17 +678,10 @@ async function loadNeighborhoods() {
       error
     } =
       await db
-        .from(
-          "neighborhoods"
-        )
+        .from("neighborhoods")
         .select("*")
-        .eq(
-          "active",
-          true
-        )
-        .order(
-          "name"
-        );
+        .eq("active", true)
+        .order("name");
 
 
     if (error) {
@@ -839,8 +749,7 @@ function selectedFee() {
 
 
   if (
-    fulfillment ===
-    "pickup"
+    fulfillment === "pickup"
   ) {
     return 0;
   }
@@ -854,19 +763,13 @@ function selectedFee() {
   const neighborhood =
     neighborhoods.find(
       item =>
-        String(
-          item.id
-        ) ===
-        String(
-          neighborhoodId
-        )
+        String(item.id) ===
+        String(neighborhoodId)
     );
 
 
   return neighborhood
-    ? Number(
-        neighborhood.fee
-      )
+    ? Number(neighborhood.fee)
     : 0;
 }
 
@@ -879,9 +782,7 @@ function selectedFee() {
 function subtotal() {
 
   return Object
-    .entries(
-      cart
-    )
+    .entries(cart)
     .reduce(
       (
         total,
@@ -894,12 +795,8 @@ function subtotal() {
         const product =
           products.find(
             item =>
-              String(
-                item.id
-              ) ===
-              String(
-                productId
-              )
+              String(item.id) ===
+              String(productId)
           );
 
 
@@ -911,9 +808,7 @@ function subtotal() {
 
 
         return total +
-          Number(
-            product.price
-          ) *
+          Number(product.price) *
           quantity;
       },
       0
@@ -933,9 +828,7 @@ function orderTotal() {
       subtotal() +
       selectedFee()
     )
-      .toFixed(
-        2
-      )
+      .toFixed(2)
   );
 }
 
@@ -949,9 +842,7 @@ function renderCart() {
 
   const cartItems =
     Object
-      .entries(
-        cart
-      )
+      .entries(cart)
       .filter(
         (
           [
@@ -980,12 +871,8 @@ function renderCart() {
           const product =
             products.find(
               item =>
-                String(
-                  item.id
-                ) ===
-                String(
-                  productId
-                )
+                String(item.id) ===
+                String(productId)
             );
 
 
@@ -1075,44 +962,32 @@ function renderCart() {
 
   el("subtotal")
     .textContent =
-    money(
-      sub
-    );
+    money(sub);
 
 
   el("delivery-fee")
     .textContent =
-    money(
-      fee
-    );
+    money(fee);
 
 
   el("total")
     .textContent =
-    money(
-      total
-    );
+    money(total);
 
 
   el("checkout-subtotal")
     .textContent =
-    money(
-      sub
-    );
+    money(sub);
 
 
   el("checkout-fee")
     .textContent =
-    money(
-      fee
-    );
+    money(fee);
 
 
   el("checkout-total")
     .textContent =
-    money(
-      total
-    );
+    money(total);
 
 
   document
@@ -1122,31 +997,29 @@ function renderCart() {
     .forEach(
       button => {
 
-        button
-          .addEventListener(
-            "click",
-            () => {
+        button.addEventListener(
+          "click",
+          () => {
 
-              const id =
-                button.dataset
-                  .minus;
+            const id =
+              button.dataset.minus;
 
 
-              cart[id] =
-                Math.max(
-                  0,
-                  (
-                    cart[id] ||
-                    0
-                  ) - 1
-                );
+            cart[id] =
+              Math.max(
+                0,
+                (
+                  cart[id] ||
+                  0
+                ) - 1
+              );
 
 
-              invalidatePayment();
+            invalidatePayment();
 
-              renderCart();
-            }
-          );
+            renderCart();
+          }
+        );
       }
     );
 
@@ -1158,28 +1031,26 @@ function renderCart() {
     .forEach(
       button => {
 
-        button
-          .addEventListener(
-            "click",
-            () => {
+        button.addEventListener(
+          "click",
+          () => {
 
-              const id =
-                button.dataset
-                  .plus;
+            const id =
+              button.dataset.plus;
 
 
-              cart[id] =
-                (
-                  cart[id] ||
-                  0
-                ) + 1;
+            cart[id] =
+              (
+                cart[id] ||
+                0
+              ) + 1;
 
 
-              invalidatePayment();
+            invalidatePayment();
 
-              renderCart();
-            }
-          );
+            renderCart();
+          }
+        );
       }
     );
 }
@@ -1193,9 +1064,7 @@ function renderCart() {
 function getCartItemsForBackend() {
 
   return Object
-    .entries(
-      cart
-    )
+    .entries(cart)
     .filter(
       (
         [
@@ -1214,14 +1083,10 @@ function getCartItemsForBackend() {
       ) => ({
 
         product_id:
-          Number(
-            productId
-          ),
+          Number(productId),
 
         qty:
-          Number(
-            quantity
-          )
+          Number(quantity)
       })
     );
 }
@@ -1243,8 +1108,7 @@ el("continue-btn")
 
 
       if (
-        storeStatus !==
-        "open"
+        storeStatus !== "open"
       ) {
 
         el("cart-error")
@@ -1269,18 +1133,13 @@ el("continue-btn")
 
       el("checkout")
         .classList
-        .remove(
-          "hidden"
-        );
+        .remove("hidden");
 
 
       el("checkout")
         .scrollIntoView({
-          behavior:
-            "smooth",
-
-          block:
-            "start"
+          behavior: "smooth",
+          block: "start"
         });
     }
   );
@@ -1298,29 +1157,27 @@ document
   .forEach(
     radio => {
 
-      radio
-        .addEventListener(
-          "change",
-          () => {
+      radio.addEventListener(
+        "change",
+        () => {
 
-            const fulfillment =
-              getFulfillment();
-
-
-            el("delivery-fields")
-              .classList
-              .toggle(
-                "hidden",
-                fulfillment ===
-                  "pickup"
-              );
+          const fulfillment =
+            getFulfillment();
 
 
-            invalidatePayment();
+          el("delivery-fields")
+            .classList
+            .toggle(
+              "hidden",
+              fulfillment === "pickup"
+            );
 
-            renderCart();
-          }
-        );
+
+          invalidatePayment();
+
+          renderCart();
+        }
+      );
     }
   );
 
@@ -1350,18 +1207,14 @@ async function loadMercadoPago() {
       await fetch(
         "/api/payment-config",
         {
-          method:
-            "GET",
-
-          cache:
-            "no-store"
+          method: "GET",
+          cache: "no-store"
         }
       );
 
 
     const result =
-      await response
-        .json();
+      await response.json();
 
 
     if (
@@ -1404,8 +1257,7 @@ async function loadMercadoPago() {
       new MercadoPago(
         paymentPublicKey,
         {
-          locale:
-            "pt-BR"
+          locale: "pt-BR"
         }
       );
 
@@ -1511,16 +1363,12 @@ async function invalidatePayment() {
 
     mercadoPagoSection
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
   }
 
 
   const confirmButton =
-    el(
-      "confirm-btn"
-    );
+    el("confirm-btn");
 
 
   if (
@@ -1529,18 +1377,14 @@ async function invalidatePayment() {
 
     confirmButton
       .classList
-      .remove(
-        "hidden"
-      );
+      .remove("hidden");
 
 
-    confirmButton
-      .disabled =
+    confirmButton.disabled =
       false;
 
 
-    confirmButton
-      .textContent =
+    confirmButton.textContent =
       "Ir para pagamento";
   }
 
@@ -1557,9 +1401,7 @@ async function invalidatePayment() {
 
     paymentMessage
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
 
 
     paymentMessage
@@ -1583,63 +1425,45 @@ function getCheckoutData() {
   return {
 
     customer_name:
-      el(
-        "customer-name"
-      )
+      el("customer-name")
         .value
         .trim(),
 
     customer_phone:
-      el(
-        "customer-phone"
-      )
+      el("customer-phone")
         .value
         .trim(),
 
     fulfillment,
 
     neighborhood_id:
-      fulfillment ===
-        "delivery"
-        ? el(
-            "neighborhood"
-          ).value
+      fulfillment === "delivery"
+        ? el("neighborhood").value
         : null,
 
     street:
-      fulfillment ===
-        "delivery"
-        ? el(
-            "street"
-          )
+      fulfillment === "delivery"
+        ? el("street")
             .value
             .trim()
         : null,
 
     number:
-      fulfillment ===
-        "delivery"
-        ? el(
-            "number"
-          )
+      fulfillment === "delivery"
+        ? el("number")
             .value
             .trim()
         : null,
 
     complement:
-      fulfillment ===
-        "delivery"
-        ? el(
-            "complement"
-          )
+      fulfillment === "delivery"
+        ? el("complement")
             .value
             .trim()
         : null,
 
     notes:
-      el(
-        "notes"
-      )
+      el("notes")
         .value
         .trim(),
 
@@ -1696,8 +1520,7 @@ function validateCheckout() {
 
 
   if (
-    data.fulfillment ===
-      "delivery" &&
+    data.fulfillment === "delivery" &&
     (
       !data.neighborhood_id ||
       !data.street ||
@@ -1726,8 +1549,7 @@ function validateCheckout() {
 
 
   if (
-    storeStatus !==
-    "open"
+    storeStatus !== "open"
   ) {
 
     el("checkout-error")
@@ -1756,7 +1578,7 @@ function validateCheckout() {
 
 
 /* =========================================================
-   MOSTRAR MENSAGEM DO PAGAMENTO
+   MENSAGEM DO PAGAMENTO
 ========================================================= */
 
 function showPaymentMessage(
@@ -1765,9 +1587,7 @@ function showPaymentMessage(
 ) {
 
   const box =
-    el(
-      "payment-message"
-    );
+    el("payment-message");
 
 
   if (
@@ -1779,9 +1599,7 @@ function showPaymentMessage(
 
   box
     .classList
-    .remove(
-      "hidden"
-    );
+    .remove("hidden");
 
 
   box.innerHTML =
@@ -1828,7 +1646,7 @@ function setPaymentProcessing(
 
 
 /* =========================================================
-   FINALIZAR PEDIDO COM SUCESSO
+   SUCESSO
 ========================================================= */
 
 async function showOrderSuccess(
@@ -1872,16 +1690,12 @@ async function showOrderSuccess(
 
   el("checkout")
     .classList
-    .add(
-      "hidden"
-    );
+    .add("hidden");
 
 
   el("success")
     .classList
-    .remove(
-      "hidden"
-    );
+    .remove("hidden");
 
 
   el("success-text")
@@ -1897,14 +1711,8 @@ async function showOrderSuccess(
 
   successPayment
     .classList
-    .remove(
-      "hidden"
-    );
+    .remove("hidden");
 
-
-  /*
-    PAGAMENTO APROVADO
-  */
 
   if (
     payment?.status ===
@@ -1927,10 +1735,6 @@ async function showOrderSuccess(
 
         </div>
       `;
-
-  /*
-    PIX
-  */
 
   } else if (
     pix?.qr_code ||
@@ -2022,61 +1826,51 @@ async function showOrderSuccess(
       pix.qr_code
     ) {
 
-      copyButton
-        .addEventListener(
-          "click",
-          async () => {
+      copyButton.addEventListener(
+        "click",
+        async () => {
 
-            try {
+          try {
 
-              await navigator
-                .clipboard
-                .writeText(
-                  pix.qr_code
-                );
-
-
-              copyButton
-                .textContent =
-                "✅ Código copiado";
-
-            } catch (error) {
-
-              console.error(
-                "Erro ao copiar Pix:",
-                error
+            await navigator
+              .clipboard
+              .writeText(
+                pix.qr_code
               );
 
 
-              const pixCodeField =
-                el(
-                  "pix-code"
-                );
+            copyButton
+              .textContent =
+              "✅ Código copiado";
+
+          } catch (error) {
+
+            console.error(
+              "Erro ao copiar Pix:",
+              error
+            );
 
 
-              if (
-                pixCodeField
-              ) {
+            const pixCodeField =
+              el("pix-code");
 
-                pixCodeField
-                  .select();
-              }
+
+            if (
+              pixCodeField
+            ) {
+
+              pixCodeField
+                .select();
             }
           }
-        );
+        }
+      );
     }
 
-  /*
-    PAGAMENTO EM PROCESSAMENTO
-  */
-
   } else if (
-    payment?.status ===
-      "pending" ||
-    payment?.status ===
-      "in_process" ||
-    payment?.status ===
-      "authorized"
+    payment?.status === "pending" ||
+    payment?.status === "in_process" ||
+    payment?.status === "authorized"
   ) {
 
     successPayment
@@ -2118,18 +1912,15 @@ async function showOrderSuccess(
 
   el("success")
     .scrollIntoView({
-      behavior:
-        "smooth",
-
-      block:
-        "center"
+      behavior: "smooth",
+      block: "center"
     });
 }
 
 
 
 /* =========================================================
-   ENVIAR PAGAMENTO PARA O BACKEND
+   ENVIAR PARA O BACKEND
 ========================================================= */
 
 async function sendPayment(
@@ -2157,6 +1948,25 @@ async function sendPayment(
     payment:
       formData
   };
+
+
+  console.log(
+    "Enviando pagamento:",
+    {
+      payment_method_id:
+        formData
+          ?.payment_method_id,
+
+      hasPayer:
+        Boolean(
+          formData
+            ?.payer
+        ),
+
+      total:
+        orderTotal()
+    }
+  );
 
 
   const response =
@@ -2224,7 +2034,7 @@ async function sendPayment(
 
 
 /* =========================================================
-   RENDERIZAR PAYMENT BRICK
+   PAYMENT BRICK
 ========================================================= */
 
 async function renderPaymentBrick() {
@@ -2299,30 +2109,22 @@ async function renderPaymentBrick() {
 
   el("payment-message")
     .classList
-    .add(
-      "hidden"
-    );
+    .add("hidden");
 
 
   el("mercado-pago-section")
     .classList
-    .remove(
-      "hidden"
-    );
+    .remove("hidden");
 
 
   el("confirm-btn")
     .classList
-    .add(
-      "hidden"
-    );
+    .add("hidden");
 
 
   el("payment-processing")
     .classList
-    .remove(
-      "hidden"
-    );
+    .remove("hidden");
 
 
   paymentPrepared =
@@ -2362,24 +2164,49 @@ async function renderPaymentBrick() {
 
           el("payment-processing")
             .classList
-            .add(
-              "hidden"
-            );
+            .add("hidden");
 
 
           el("mercado-pago-section")
             .scrollIntoView({
-              behavior:
-                "smooth",
-
-              block:
-                "start"
+              behavior: "smooth",
+              block: "start"
             });
         },
 
 
         onSubmit:
-          async formData => {
+          async ({
+            selectedPaymentMethod,
+            formData
+          }) => {
+
+            console.log(
+              "Meio selecionado:",
+              selectedPaymentMethod
+            );
+
+
+            console.log(
+              "Dados recebidos do Mercado Pago:",
+              formData
+            );
+
+
+            if (
+              !formData
+            ) {
+
+              showPaymentMessage(
+                "O Mercado Pago não retornou os dados do pagamento."
+              );
+
+
+              throw new Error(
+                "Dados do pagamento não recebidos."
+              );
+            }
+
 
             setPaymentProcessing(
               true
@@ -2388,9 +2215,7 @@ async function renderPaymentBrick() {
 
             el("payment-message")
               .classList
-              .add(
-                "hidden"
-              );
+              .add("hidden");
 
 
             try {
@@ -2401,24 +2226,16 @@ async function renderPaymentBrick() {
                 );
 
 
-              /*
-                PAGAMENTO RECUSADO
-              */
-
               if (
                 result?.payment
                   ?.status ===
                 "rejected"
               ) {
 
-                const detail =
-                  result.payment
-                    .status_detail;
-
-
                 console.warn(
                   "Pagamento recusado:",
-                  detail
+                  result.payment
+                    .status_detail
                 );
 
 
@@ -2432,10 +2249,6 @@ async function renderPaymentBrick() {
                 );
               }
 
-
-              /*
-                PAGAMENTO CANCELADO
-              */
 
               if (
                 result?.payment
@@ -2538,16 +2351,12 @@ async function renderPaymentBrick() {
 
     el("payment-processing")
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
 
 
     el("confirm-btn")
       .classList
-      .remove(
-        "hidden"
-      );
+      .remove("hidden");
 
 
     showPaymentMessage(
@@ -2614,58 +2423,6 @@ el("confirm-btn")
 
 
 /* =========================================================
-   ALTERAÇÕES QUE INVALIDAM O PAGAMENTO
-========================================================= */
-
-[
-  "customer-name",
-  "customer-phone",
-  "street",
-  "number",
-  "complement",
-  "notes"
-]
-  .forEach(
-    id => {
-
-      const field =
-        el(
-          id
-        );
-
-
-      if (
-        !field
-      ) {
-        return;
-      }
-
-
-      field
-        .addEventListener(
-          "input",
-          () => {
-
-            if (
-              paymentPrepared
-            ) {
-
-              /*
-                Mudanças em nome/endereço não alteram
-                o valor, então não precisamos recriar
-                o Brick.
-
-                Mantemos o pagamento aberto.
-              */
-            }
-          }
-        );
-    }
-  );
-
-
-
-/* =========================================================
    NOVO PEDIDO
 ========================================================= */
 
@@ -2687,16 +2444,12 @@ el("new-order-btn")
 
       el("success")
         .classList
-        .add(
-          "hidden"
-        );
+        .add("hidden");
 
 
       el("success-payment")
         .classList
-        .add(
-          "hidden"
-        );
+        .add("hidden");
 
 
       el("success-payment")
@@ -2756,23 +2509,17 @@ el("new-order-btn")
 
       el("delivery-fields")
         .classList
-        .remove(
-          "hidden"
-        );
+        .remove("hidden");
 
 
       el("mercado-pago-section")
         .classList
-        .add(
-          "hidden"
-        );
+        .add("hidden");
 
 
       el("payment-message")
         .classList
-        .add(
-          "hidden"
-        );
+        .add("hidden");
 
 
       el("payment-message")
@@ -2782,9 +2529,7 @@ el("new-order-btn")
 
       el("confirm-btn")
         .classList
-        .remove(
-          "hidden"
-        );
+        .remove("hidden");
 
 
       el("confirm-btn")
@@ -2801,11 +2546,8 @@ el("new-order-btn")
 
 
       window.scrollTo({
-        top:
-          0,
-
-        behavior:
-          "smooth"
+        top: 0,
+        behavior: "smooth"
       });
     }
   );
@@ -2813,15 +2555,10 @@ el("new-order-btn")
 
 
 /* =========================================================
-   PREPARAR INTERFACE DE PAGAMENTO
+   PREPARAR INTERFACE
 ========================================================= */
 
 function preparePaymentInterface() {
-
-  /*
-    A forma de pagamento antiga não
-    será mais usada.
-  */
 
   const legacyPayment =
     el(
@@ -2835,15 +2572,9 @@ function preparePaymentInterface() {
 
     legacyPayment
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
   }
 
-
-  /*
-    O Payment Brick começa escondido.
-  */
 
   const mercadoPagoSection =
     el(
@@ -2857,20 +2588,12 @@ function preparePaymentInterface() {
 
     mercadoPagoSection
       .classList
-      .add(
-        "hidden"
-      );
+      .add("hidden");
   }
 
 
-  /*
-    Novo texto do botão.
-  */
-
   const confirmButton =
-    el(
-      "confirm-btn"
-    );
+    el("confirm-btn");
 
 
   if (
@@ -2896,11 +2619,6 @@ async function startApp() {
     preparePaymentInterface();
 
 
-    /*
-      Carrega a Public Key do Mercado Pago
-      paralelamente aos dados do cardápio.
-    */
-
     await Promise.all([
 
       loadStore(),
@@ -2920,7 +2638,6 @@ async function startApp() {
     renderProducts();
 
     renderCart();
-
 
   } catch (error) {
 
