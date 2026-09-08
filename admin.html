@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Admin • Lana Lanches</title>
+
+  <link
+    rel="stylesheet"
+    href="/css/style.css"
+  >
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+  <!-- CABEÇALHO -->
+  <header class="topbar">
+
+    <div class="brand">
+
+      <h1>
+        Lana <span>Lanches</span>
+      </h1>
+
+      <p>
+        Painel administrativo
+      </p>
+
+    </div>
+
+  </header>
+
+
+  <main class="container">
+
+
+    <!-- LOGIN -->
+    <section
+      id="login-card"
+      class="admin-card"
+    >
+
+      <h2>
+        Entrar no painel
+      </h2>
+
+
+      <label>
+
+        E-mail
+
+        <input
+          id="email"
+          type="email"
+          placeholder="seuemail@exemplo.com"
+        >
+
+      </label>
+
+
+      <label>
+
+        Senha
+
+        <input
+          id="password"
+          type="password"
+          placeholder="Sua senha"
+        >
+
+      </label>
+
+
+      <button
+        id="login-btn"
+        class="primary-btn"
+      >
+        Entrar
+      </button>
+
+
+      <p
+        id="login-error"
+        class="error"
+      ></p>
+
+    </section>
+
+
+    <!-- PAINEL ADMIN -->
+    <div
+      id="admin-panel"
+      class="hidden"
+    >
+
+
+      <!-- STATUS DA LOJA -->
+      <section class="admin-card">
+
+        <div class="admin-heading">
+
+          <div>
+
+            <h2>
+              Status da loja
+            </h2>
+
+            <p id="admin-store-text">
+              Carregando...
+            </p>
+
+          </div>
+
+
+          <button
+            id="logout-btn"
+            class="secondary-btn"
+          >
+            Sair
+          </button>
+
+        </div>
+
+
+        <div class="status-buttons">
+
+          <button
+            data-store-status="open"
+            class="secondary-btn"
+          >
+            🟢 Abrir loja
+          </button>
+
+
+          <button
+            data-store-status="paused"
+            class="secondary-btn"
+          >
+            🟡 Pausar pedidos
+          </button>
+
+
+          <button
+            data-store-status="closed"
+            class="secondary-btn"
+          >
+            🔴 Fechar loja
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <!-- DISPONIBILIDADE DOS PRODUTOS -->
+      <section class="admin-card">
+
+        <h2>
+          Disponibilidade do cardápio
+        </h2>
+
+        <p>
+          Desligue qualquer produto que não estiver disponível hoje.
+        </p>
+
+
+        <div id="admin-products"></div>
+
+      </section>
+
+
+      <!-- BAIRROS -->
+      <section class="admin-card">
+
+        <h2>
+          Bairros e taxas
+        </h2>
+
+
+        <p>
+          Cadastre os bairros atendidos e a taxa de entrega de cada um.
+        </p>
+
+
+        <div class="grid-neighborhood">
+
+          <input
+            id="new-neighborhood"
+            type="text"
+            placeholder="Nome do bairro"
+          >
+
+
+          <input
+            id="new-fee"
+            type="number"
+            min="0"
+            step="0.50"
+            placeholder="Taxa R$"
+          >
+
+
+          <button
+            id="add-neighborhood-btn"
+            class="primary-btn"
+          >
+            Adicionar
+          </button>
+
+        </div>
+
+
+        <div id="admin-neighborhoods"></div>
+
+      </section>
+
+
+      <!-- PEDIDOS -->
+      <section class="admin-card">
+
+        <div class="admin-heading">
+
+          <div>
+
+            <h2>
+              Pedidos recebidos
+            </h2>
+
+            <p>
+              Os pedidos mais recentes aparecerão primeiro.
+            </p>
+
+          </div>
+
+
+          <button
+            id="refresh-orders-btn"
+            class="secondary-btn"
+          >
+            Atualizar
+          </button>
+
+        </div>
+
+
+        <div id="orders">
+
+          <p>
+            Nenhum pedido recebido ainda.
+          </p>
+
+        </div>
+
+      </section>
+
+
+    </div>
+
+  </main>
+
+
+  <!-- CONEXÃO COM SUPABASE -->
+  <script src="/js/config.js"></script>
+
+
+  <!-- FUNÇÕES DO PAINEL -->
+  <script src="/js/admin.js"></script>
+
+</body>
+
+</html>
