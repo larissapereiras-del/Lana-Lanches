@@ -1,10 +1,6 @@
-const categoryOrder = [
-  "Cachorro-quente",
-  "Pastéis",
-  "Caldos",
-  "Porções"
-];
-
+/* =========================================================
+   CONFIGURAÇÕES GERAIS
+========================================================= */
 
 const money = value =>
   new Intl.NumberFormat("pt-BR", {
@@ -18,19 +14,23 @@ const el = id =>
 
 
 const escapeHTML = value => {
-  if (value === null || value === undefined) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
     return "";
   }
 
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 };
 
 
+let categories = [];
 let products = [];
 let neighborhoods = [];
 
@@ -43,6 +43,7 @@ let removeCurrentImage = false;
 ========================================================= */
 
 async function checkSession() {
+
   const {
     data: { session }
   } =
@@ -65,7 +66,10 @@ el("password")
   .addEventListener(
     "keydown",
     event => {
-      if (event.key === "Enter") {
+
+      if (
+        event.key === "Enter"
+      ) {
         login();
       }
     }
@@ -73,6 +77,7 @@ el("password")
 
 
 async function login() {
+
   const email =
     el("email")
       .value
@@ -82,18 +87,27 @@ async function login() {
     el("password")
       .value;
 
-  el("login-error").textContent =
+  el("login-error")
+    .textContent =
     "";
 
-  if (!email || !password) {
-    el("login-error").textContent =
+  if (
+    !email ||
+    !password
+  ) {
+
+    el("login-error")
+      .textContent =
       "Preencha e-mail e senha.";
 
     return;
   }
 
-  el("login-btn").disabled =
+
+  el("login-btn")
+    .disabled =
     true;
+
 
   const {
     error
@@ -104,17 +118,23 @@ async function login() {
         password
       });
 
-  el("login-btn").disabled =
+
+  el("login-btn")
+    .disabled =
     false;
 
+
   if (error) {
+
     console.error(error);
 
-    el("login-error").textContent =
+    el("login-error")
+      .textContent =
       "E-mail ou senha inválidos.";
 
     return;
   }
+
 
   await showAdminPanel();
 }
@@ -124,6 +144,7 @@ el("logout-btn")
   .addEventListener(
     "click",
     async () => {
+
       await db.auth.signOut();
 
       el("admin-panel")
@@ -138,6 +159,7 @@ el("logout-btn")
 
 
 async function showAdminPanel() {
+
   el("login-card")
     .classList
     .add("hidden");
@@ -145,6 +167,15 @@ async function showAdminPanel() {
   el("admin-panel")
     .classList
     .remove("hidden");
+
+
+  /*
+    Primeiro carregamos categorias e produtos.
+    Assim o cardápio já consegue ser montado
+    na ordem correta.
+  */
+
+  await loadCategories();
 
   await Promise.all([
     loadStore(),
@@ -160,6 +191,7 @@ async function showAdminPanel() {
 ========================================================= */
 
 async function loadStore() {
+
   const {
     data,
     error
@@ -170,7 +202,9 @@ async function loadStore() {
       .eq("id", 1)
       .single();
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar status:",
       error
@@ -183,7 +217,9 @@ async function loadStore() {
     return;
   }
 
+
   const labels = {
+
     open:
       "🟢 Loja aberta e recebendo pedidos",
 
@@ -193,6 +229,7 @@ async function loadStore() {
     closed:
       "🔴 Loja fechada"
   };
+
 
   el("admin-store-text")
     .textContent =
@@ -206,12 +243,15 @@ document
     "[data-store-status]"
   )
   .forEach(button => {
+
     button.addEventListener(
       "click",
       async () => {
+
         const status =
           button.dataset
             .storeStatus;
+
 
         const {
           error
@@ -226,7 +266,9 @@ document
             })
             .eq("id", 1);
 
+
         if (error) {
+
           console.error(error);
 
           alert(
@@ -236,6 +278,7 @@ document
           return;
         }
 
+
         await loadStore();
       }
     );
@@ -243,10 +286,842 @@ document
 
 
 /* =========================================================
+   CATEGORIAS
+========================================================= */
+
+async function loadCategories() {
+
+  const {
+    data,
+    error
+  } =
+    await db
+      .from("categories")
+      .select("*")
+      .order(
+        "sort_order",
+        {
+          ascending: true
+        }
+      )
+      .order(
+        "name",
+        {
+          ascending: true
+        }
+      );
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao carregar categorias:",
+      error
+    );
+
+    el("admin-categories")
+      .innerHTML =
+      "<p>Erro ao carregar categorias.</p>";
+
+    return;
+  }
+
+
+  categories =
+    data || [];
+
+
+  renderCategories();
+
+  renderProductCategoryOptions();
+}
+
+
+/* =========================================================
+   EXIBIR CATEGORIAS
+========================================================= */
+
+function renderCategories() {
+
+  if (!categories.length) {
+
+    el("admin-categories")
+      .innerHTML =
+      "<p>Nenhuma categoria cadastrada.</p>";
+
+    return;
+  }
+
+
+  el("admin-categories")
+    .innerHTML =
+    categories
+      .map(category => {
+
+        const productCount =
+          products.filter(
+            product =>
+              product.category ===
+              category.name
+          ).length;
+
+
+        return `
+          <div class="admin-neighborhood">
+
+            <div>
+
+              <strong>
+                ${escapeHTML(category.name)}
+              </strong>
+
+              <br>
+
+              <small>
+                Ordem: ${Number(category.sort_order)}
+                •
+                ${
+                  category.active
+                    ? "Ativa"
+                    : "Inativa"
+                }
+                ${
+                  productCount
+                    ? ` • ${productCount} ${
+                        productCount === 1
+                          ? "produto"
+                          : "produtos"
+                      }`
+                    : ""
+                }
+              </small>
+
+            </div>
+
+
+            <div class="order-actions">
+
+              <button
+                class="secondary-btn"
+                data-category-edit="${category.id}"
+              >
+                ✏️ Editar
+              </button>
+
+
+              <button
+                class="secondary-btn"
+                data-category-toggle="${category.id}"
+              >
+                ${
+                  category.active
+                    ? "Desativar"
+                    : "Ativar"
+                }
+              </button>
+
+
+              <button
+                class="danger-btn"
+                data-category-delete="${category.id}"
+              >
+                🗑️ Excluir
+              </button>
+
+            </div>
+
+          </div>
+        `;
+      })
+      .join("");
+
+
+  bindCategoryButtons();
+}
+
+
+/* =========================================================
+   BOTÕES DAS CATEGORIAS
+========================================================= */
+
+function bindCategoryButtons() {
+
+  document
+    .querySelectorAll(
+      "[data-category-edit]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          openEditCategory(
+            button.dataset
+              .categoryEdit
+          );
+        }
+      );
+    });
+
+
+  document
+    .querySelectorAll(
+      "[data-category-toggle]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        async () => {
+
+          const id =
+            button.dataset
+              .categoryToggle;
+
+
+          const category =
+            categories.find(
+              item =>
+                String(item.id) ===
+                String(id)
+            );
+
+
+          if (!category) {
+            return;
+          }
+
+
+          const {
+            error
+          } =
+            await db
+              .from("categories")
+              .update({
+                active:
+                  !category.active
+              })
+              .eq(
+                "id",
+                id
+              );
+
+
+          if (error) {
+
+            console.error(error);
+
+            alert(
+              "Não foi possível alterar a categoria."
+            );
+
+            return;
+          }
+
+
+          await loadCategories();
+
+          renderProducts();
+        }
+      );
+    });
+
+
+  document
+    .querySelectorAll(
+      "[data-category-delete]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        async () => {
+
+          const id =
+            button.dataset
+              .categoryDelete;
+
+
+          const category =
+            categories.find(
+              item =>
+                String(item.id) ===
+                String(id)
+            );
+
+
+          if (!category) {
+            return;
+          }
+
+
+          const linkedProducts =
+            products.filter(
+              product =>
+                product.category ===
+                category.name
+            );
+
+
+          if (linkedProducts.length) {
+
+            alert(
+              `A categoria "${category.name}" possui ${linkedProducts.length} ${
+                linkedProducts.length === 1
+                  ? "produto cadastrado"
+                  : "produtos cadastrados"
+              }. Para não perder a organização do cardápio, mova esses produtos para outra categoria ou apenas desative a categoria.`
+            );
+
+            return;
+          }
+
+
+          const confirmed =
+            confirm(
+              `Deseja realmente excluir a categoria "${category.name}"?`
+            );
+
+
+          if (!confirmed) {
+            return;
+          }
+
+
+          const {
+            error
+          } =
+            await db
+              .from("categories")
+              .delete()
+              .eq(
+                "id",
+                id
+              );
+
+
+          if (error) {
+
+            console.error(error);
+
+            alert(
+              "Não foi possível excluir a categoria."
+            );
+
+            return;
+          }
+
+
+          await loadCategories();
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   NOVA CATEGORIA
+========================================================= */
+
+el("new-category-btn")
+  .addEventListener(
+    "click",
+    () => {
+
+      resetCategoryForm();
+
+
+      el("category-form-title")
+        .textContent =
+        "Nova categoria";
+
+
+      /*
+        Coloca automaticamente o próximo
+        número de ordem.
+      */
+
+      const maxOrder =
+        categories.length
+          ? Math.max(
+              ...categories.map(
+                category =>
+                  Number(
+                    category.sort_order
+                  ) || 0
+              )
+            )
+          : 0;
+
+
+      el("category-sort-order")
+        .value =
+        maxOrder + 10;
+
+
+      el("category-form")
+        .classList
+        .remove("hidden");
+
+
+      el("category-form")
+        .scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+    }
+  );
+
+
+/* =========================================================
+   EDITAR CATEGORIA
+========================================================= */
+
+function openEditCategory(id) {
+
+  const category =
+    categories.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!category) {
+    return;
+  }
+
+
+  el("editing-category-id")
+    .value =
+    category.id;
+
+
+  el("category-name")
+    .value =
+    category.name;
+
+
+  el("category-sort-order")
+    .value =
+    category.sort_order;
+
+
+  el("category-form-title")
+    .textContent =
+    "Editar categoria";
+
+
+  el("category-form-error")
+    .textContent =
+    "";
+
+
+  el("category-form")
+    .classList
+    .remove("hidden");
+
+
+  el("category-form")
+    .scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+}
+
+
+/* =========================================================
+   RESET CATEGORIA
+========================================================= */
+
+function resetCategoryForm() {
+
+  el("editing-category-id")
+    .value =
+    "";
+
+
+  el("category-name")
+    .value =
+    "";
+
+
+  el("category-sort-order")
+    .value =
+    "";
+
+
+  el("category-form-error")
+    .textContent =
+    "";
+}
+
+
+/* =========================================================
+   CANCELAR CATEGORIA
+========================================================= */
+
+el("cancel-category-btn")
+  .addEventListener(
+    "click",
+    () => {
+
+      resetCategoryForm();
+
+      el("category-form")
+        .classList
+        .add("hidden");
+    }
+  );
+
+
+/* =========================================================
+   SALVAR CATEGORIA
+========================================================= */
+
+el("save-category-btn")
+  .addEventListener(
+    "click",
+    async () => {
+
+      const editingId =
+        el("editing-category-id")
+          .value;
+
+
+      const name =
+        el("category-name")
+          .value
+          .trim();
+
+
+      const sortOrder =
+        Number(
+          el("category-sort-order")
+            .value
+        );
+
+
+      el("category-form-error")
+        .textContent =
+        "";
+
+
+      if (!name) {
+
+        el("category-form-error")
+          .textContent =
+          "Digite o nome da categoria.";
+
+        return;
+      }
+
+
+      if (
+        Number.isNaN(sortOrder) ||
+        sortOrder < 0
+      ) {
+
+        el("category-form-error")
+          .textContent =
+          "Digite uma ordem válida.";
+
+        return;
+      }
+
+
+      el("save-category-btn")
+        .disabled =
+        true;
+
+
+      el("save-category-btn")
+        .textContent =
+        "Salvando...";
+
+
+      try {
+
+        if (editingId) {
+
+          await updateCategory(
+            editingId,
+            name,
+            sortOrder
+          );
+
+        } else {
+
+          await createCategory(
+            name,
+            sortOrder
+          );
+        }
+
+      } catch (error) {
+
+        console.error(error);
+
+        el("category-form-error")
+          .textContent =
+          error.message ||
+          "Não foi possível salvar a categoria.";
+
+      } finally {
+
+        el("save-category-btn")
+          .disabled =
+          false;
+
+
+        el("save-category-btn")
+          .textContent =
+          "Salvar categoria";
+      }
+    }
+  );
+
+
+/* =========================================================
+   CRIAR CATEGORIA
+========================================================= */
+
+async function createCategory(
+  name,
+  sortOrder
+) {
+
+  const {
+    error
+  } =
+    await db
+      .from("categories")
+      .insert({
+        name,
+        active: true,
+        sort_order:
+          sortOrder
+      });
+
+
+  if (error) {
+
+    console.error(error);
+
+    if (
+      error.code === "23505"
+    ) {
+
+      throw new Error(
+        "Essa categoria já existe."
+      );
+    }
+
+
+    throw new Error(
+      "Não foi possível cadastrar a categoria."
+    );
+  }
+
+
+  resetCategoryForm();
+
+
+  el("category-form")
+    .classList
+    .add("hidden");
+
+
+  await loadCategories();
+
+
+  alert(
+    "Categoria cadastrada com sucesso!"
+  );
+}
+
+
+/* =========================================================
+   ATUALIZAR CATEGORIA
+========================================================= */
+
+async function updateCategory(
+  id,
+  name,
+  sortOrder
+) {
+
+  const oldCategory =
+    categories.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!oldCategory) {
+
+    throw new Error(
+      "Categoria não encontrada."
+    );
+  }
+
+
+  const oldName =
+    oldCategory.name;
+
+
+  /*
+    Primeiro atualizamos a categoria.
+  */
+
+  const {
+    error: categoryError
+  } =
+    await db
+      .from("categories")
+      .update({
+        name,
+        sort_order:
+          sortOrder
+      })
+      .eq(
+        "id",
+        id
+      );
+
+
+  if (categoryError) {
+
+    console.error(
+      categoryError
+    );
+
+
+    if (
+      categoryError.code ===
+      "23505"
+    ) {
+
+      throw new Error(
+        "Já existe uma categoria com esse nome."
+      );
+    }
+
+
+    throw new Error(
+      "Não foi possível editar a categoria."
+    );
+  }
+
+
+  /*
+    Se o nome mudou, atualizamos também
+    os produtos que pertenciam à categoria antiga.
+  */
+
+  if (
+    oldName !== name
+  ) {
+
+    const {
+      error: productsError
+    } =
+      await db
+        .from("products")
+        .update({
+          category: name
+        })
+        .eq(
+          "category",
+          oldName
+        );
+
+
+    if (productsError) {
+
+      console.error(
+        productsError
+      );
+
+      throw new Error(
+        "A categoria foi alterada, mas houve um problema ao atualizar os produtos vinculados."
+      );
+    }
+  }
+
+
+  resetCategoryForm();
+
+
+  el("category-form")
+    .classList
+    .add("hidden");
+
+
+  await loadCategories();
+
+  await loadProducts();
+
+
+  alert(
+    "Categoria atualizada com sucesso!"
+  );
+}
+
+
+/* =========================================================
+   OPÇÕES DE CATEGORIA NO PRODUTO
+========================================================= */
+
+function renderProductCategoryOptions(
+  selectedValue = ""
+) {
+
+  const select =
+    el("product-category");
+
+
+  if (!select) {
+    return;
+  }
+
+
+  select.innerHTML =
+    `
+      <option value="">
+        Selecione
+      </option>
+    ` +
+    categories
+      .map(category => `
+        <option
+          value="${escapeHTML(category.name)}"
+          ${
+            selectedValue === category.name
+              ? "selected"
+              : ""
+          }
+        >
+          ${escapeHTML(category.name)}
+          ${
+            category.active
+              ? ""
+              : " (inativa)"
+          }
+        </option>
+      `)
+      .join("");
+}
+
+
+/* =========================================================
    PRODUTOS
 ========================================================= */
 
 async function loadProducts() {
+
   const {
     data,
     error
@@ -261,7 +1136,9 @@ async function loadProducts() {
         }
       );
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar produtos:",
       error
@@ -274,131 +1151,219 @@ async function loadProducts() {
     return;
   }
 
+
   products =
     data || [];
 
+
   renderProducts();
+
+  renderCategories();
 }
 
 
+/* =========================================================
+   EXIBIR PRODUTOS
+========================================================= */
+
 function renderProducts() {
+
+  /*
+    Primeiro categorias cadastradas.
+  */
+
+  const orderedCategoryNames =
+    categories.map(
+      category =>
+        category.name
+    );
+
+
+  /*
+    Se existir algum produto antigo com uma
+    categoria que não esteja na tabela categories,
+    ele também continuará aparecendo no Admin.
+  */
+
+  const orphanCategories =
+    [
+      ...new Set(
+        products
+          .map(
+            product =>
+              product.category
+          )
+          .filter(
+            category =>
+              !orderedCategoryNames
+                .includes(category)
+          )
+      )
+    ];
+
+
+  const allCategoryNames =
+    [
+      ...orderedCategoryNames,
+      ...orphanCategories
+    ];
+
+
+  if (!products.length) {
+
+    el("admin-products")
+      .innerHTML =
+      "<p>Nenhum produto cadastrado.</p>";
+
+    return;
+  }
+
+
   el("admin-products")
     .innerHTML =
-    categoryOrder
-      .map(category => {
+    allCategoryNames
+      .map(categoryName => {
+
         const items =
           products.filter(
             product =>
               product.category ===
-              category
+              categoryName
           );
+
 
         if (!items.length) {
           return "";
         }
 
+
+        const category =
+          categories.find(
+            item =>
+              item.name ===
+              categoryName
+          );
+
+
         return `
           <div class="admin-category">
 
             <h3>
-              ${escapeHTML(category)}
+              ${escapeHTML(categoryName)}
+
+              ${
+                category &&
+                !category.active
+                  ? `
+                    <span class="product-status product-inactive">
+                      Categoria inativa
+                    </span>
+                  `
+                  : ""
+              }
+
             </h3>
+
 
             ${
               items
-                .map(
-                  product => `
-                    <div class="admin-product">
+                .map(product => `
+                  <div class="admin-product">
 
-                      <div class="admin-product-info">
+                    <div class="admin-product-info">
 
-                        ${
-                          product.image_url
-                            ? `
-                              <img
-                                src="${escapeHTML(product.image_url)}"
-                                alt="${escapeHTML(product.name)}"
-                                class="admin-product-thumb"
-                              >
-                            `
-                            : ""
-                        }
-
-                        <div>
-
-                          <div class="admin-product-name">
-
-                            <strong>
-                              ${escapeHTML(product.name)}
-                            </strong>
-
-                            <span
-                              class="product-status ${
-                                product.active
-                                  ? "product-active"
-                                  : "product-inactive"
-                              }"
+                      ${
+                        product.image_url
+                          ? `
+                            <img
+                              src="${escapeHTML(product.image_url)}"
+                              alt="${escapeHTML(product.name)}"
+                              class="admin-product-thumb"
                             >
-                              ${
-                                product.active
-                                  ? "Disponível"
-                                  : "Indisponível"
-                              }
-                            </span>
+                          `
+                          : ""
+                      }
 
-                          </div>
 
-                          ${
-                            product.description
-                              ? `
-                                <p class="admin-product-description">
-                                  ${escapeHTML(product.description)}
-                                </p>
-                              `
-                              : ""
-                          }
+                      <div>
 
-                          <span class="admin-product-price">
-                            ${money(product.price)}
+                        <div class="admin-product-name">
+
+                          <strong>
+                            ${escapeHTML(product.name)}
+                          </strong>
+
+
+                          <span
+                            class="product-status ${
+                              product.active
+                                ? "product-active"
+                                : "product-inactive"
+                            }"
+                          >
+                            ${
+                              product.active
+                                ? "Disponível"
+                                : "Indisponível"
+                            }
                           </span>
 
                         </div>
 
-                      </div>
+
+                        ${
+                          product.description
+                            ? `
+                              <p class="admin-product-description">
+                                ${escapeHTML(product.description)}
+                              </p>
+                            `
+                            : ""
+                        }
 
 
-                      <div class="admin-product-actions">
-
-                        <button
-                          class="secondary-btn"
-                          data-product-edit="${product.id}"
-                        >
-                          ✏️ Editar
-                        </button>
-
-                        <button
-                          class="secondary-btn"
-                          data-product-toggle="${product.id}"
-                        >
-                          ${
-                            product.active
-                              ? "Desativar"
-                              : "Ativar"
-                          }
-                        </button>
-
-                        <button
-                          class="danger-btn"
-                          data-product-delete="${product.id}"
-                        >
-                          🗑️ Excluir
-                        </button>
+                        <span class="admin-product-price">
+                          ${money(product.price)}
+                        </span>
 
                       </div>
 
                     </div>
-                  `
-                )
+
+
+                    <div class="admin-product-actions">
+
+                      <button
+                        class="secondary-btn"
+                        data-product-edit="${product.id}"
+                      >
+                        ✏️ Editar
+                      </button>
+
+
+                      <button
+                        class="secondary-btn"
+                        data-product-toggle="${product.id}"
+                      >
+                        ${
+                          product.active
+                            ? "Desativar"
+                            : "Ativar"
+                        }
+                      </button>
+
+
+                      <button
+                        class="danger-btn"
+                        data-product-delete="${product.id}"
+                      >
+                        🗑️ Excluir
+                      </button>
+
+                    </div>
+
+                  </div>
+                `)
                 .join("")
             }
 
@@ -407,19 +1372,27 @@ function renderProducts() {
       })
       .join("");
 
+
   bindProductButtons();
 }
 
 
+/* =========================================================
+   BOTÕES DOS PRODUTOS
+========================================================= */
+
 function bindProductButtons() {
+
   document
     .querySelectorAll(
       "[data-product-edit]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         () => {
+
           openEditProduct(
             button.dataset
               .productEdit
@@ -434,12 +1407,15 @@ function bindProductButtons() {
       "[data-product-toggle]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .productToggle;
+
 
           const product =
             products.find(
@@ -448,9 +1424,11 @@ function bindProductButtons() {
                 String(id)
             );
 
+
           if (!product) {
             return;
           }
+
 
           const {
             error
@@ -466,7 +1444,9 @@ function bindProductButtons() {
                 id
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -475,6 +1455,7 @@ function bindProductButtons() {
 
             return;
           }
+
 
           await loadProducts();
         }
@@ -487,12 +1468,15 @@ function bindProductButtons() {
       "[data-product-delete]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .productDelete;
+
 
           const product =
             products.find(
@@ -501,24 +1485,27 @@ function bindProductButtons() {
                 String(id)
             );
 
+
           if (!product) {
             return;
           }
+
 
           const confirmed =
             confirm(
               `Deseja realmente excluir "${product.name}"?`
             );
 
+
           if (!confirmed) {
             return;
           }
 
-          if (product.image_url) {
-            await deleteImageFromStorage(
-              product.image_url
-            );
-          }
+
+          /*
+            Primeiro tentamos excluir o produto.
+            Só apagamos a foto depois.
+          */
 
           const {
             error
@@ -531,7 +1518,9 @@ function bindProductButtons() {
                 id
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -540,6 +1529,15 @@ function bindProductButtons() {
 
             return;
           }
+
+
+          if (product.image_url) {
+
+            await deleteImageFromStorage(
+              product.image_url
+            );
+          }
+
 
           await loadProducts();
         }
@@ -556,12 +1554,16 @@ el("product-image")
   .addEventListener(
     "change",
     event => {
+
       const file =
-        event.target.files?.[0];
+        event.target
+          .files?.[0];
+
 
       if (!file) {
         return;
       }
+
 
       const allowedTypes = [
         "image/jpeg",
@@ -569,49 +1571,62 @@ el("product-image")
         "image/webp"
       ];
 
+
       if (
         !allowedTypes.includes(
           file.type
         )
       ) {
+
         el("product-form-error")
           .textContent =
           "Use uma imagem JPG, PNG ou WebP.";
 
-        el("product-image").value =
+
+        el("product-image")
+          .value =
           "";
 
         return;
       }
+
 
       if (
         file.size >
         5 * 1024 * 1024
       ) {
+
         el("product-form-error")
           .textContent =
           "A imagem precisa ter no máximo 5 MB.";
 
-        el("product-image").value =
+
+        el("product-image")
+          .value =
           "";
 
         return;
       }
 
+
       el("product-form-error")
         .textContent =
         "";
 
+
       selectedImageFile =
         file;
 
+
       removeCurrentImage =
         false;
+
 
       const previewURL =
         URL.createObjectURL(
           file
         );
+
 
       showImagePreview(
         previewURL
@@ -624,14 +1639,19 @@ el("remove-product-image-btn")
   .addEventListener(
     "click",
     () => {
+
       selectedImageFile =
         null;
 
-      el("product-image").value =
+
+      el("product-image")
+        .value =
         "";
+
 
       removeCurrentImage =
         true;
+
 
       hideImagePreview();
     }
@@ -639,9 +1659,11 @@ el("remove-product-image-btn")
 
 
 function showImagePreview(url) {
+
   el("product-image-preview")
     .src =
     url;
+
 
   el("product-image-preview-box")
     .classList
@@ -650,9 +1672,11 @@ function showImagePreview(url) {
 
 
 function hideImagePreview() {
+
   el("product-image-preview")
     .src =
     "";
+
 
   el("product-image-preview-box")
     .classList
@@ -660,19 +1684,38 @@ function hideImagePreview() {
 }
 
 
+/* =========================================================
+   UPLOAD DA FOTO
+========================================================= */
+
 async function uploadProductImage(
   file,
   productName
 ) {
+
   if (!file) {
     return null;
   }
 
+
+  const extensionMap = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp"
+  };
+
+
   const extension =
-    file.name
-      .split(".")
-      .pop()
-      .toLowerCase();
+    extensionMap[file.type];
+
+
+  if (!extension) {
+
+    throw new Error(
+      "Formato de imagem inválido."
+    );
+  }
+
 
   const safeName =
     productName
@@ -691,8 +1734,20 @@ async function uploadProductImage(
         ""
       );
 
+
+  const unique =
+    typeof crypto !==
+      "undefined" &&
+    crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}`;
+
+
   const fileName =
-    `${Date.now()}-${safeName}.${extension}`;
+    `products/${unique}-${safeName}.${extension}`;
+
 
   const {
     error
@@ -707,11 +1762,16 @@ async function uploadProductImage(
             "3600",
 
           upsert:
-            false
+            false,
+
+          contentType:
+            file.type
         }
       );
 
+
   if (error) {
+
     console.error(
       "Erro no upload:",
       error
@@ -722,6 +1782,7 @@ async function uploadProductImage(
     );
   }
 
+
   const {
     data
   } =
@@ -731,48 +1792,68 @@ async function uploadProductImage(
         fileName
       );
 
+
   return data.publicUrl;
 }
 
 
+/* =========================================================
+   CAMINHO DA FOTO NO STORAGE
+========================================================= */
+
 function getStoragePathFromURL(
   imageURL
 ) {
+
   if (!imageURL) {
     return null;
   }
 
+
   const marker =
     "/storage/v1/object/public/product-images/";
+
 
   const index =
     imageURL.indexOf(
       marker
     );
 
-  if (index === -1) {
+
+  if (
+    index === -1
+  ) {
     return null;
   }
 
+
   return decodeURIComponent(
     imageURL.substring(
-      index + marker.length
+      index +
+      marker.length
     )
   );
 }
 
 
+/* =========================================================
+   EXCLUIR FOTO
+========================================================= */
+
 async function deleteImageFromStorage(
   imageURL
 ) {
+
   const path =
     getStoragePathFromURL(
       imageURL
     );
 
+
   if (!path) {
     return;
   }
+
 
   const {
     error
@@ -783,7 +1864,9 @@ async function deleteImageFromStorage(
         path
       ]);
 
+
   if (error) {
+
     console.error(
       "Erro ao excluir imagem:",
       error
@@ -800,15 +1883,22 @@ el("new-product-btn")
   .addEventListener(
     "click",
     () => {
+
       resetProductForm();
+
+
+      renderProductCategoryOptions();
+
 
       el("product-form-title")
         .textContent =
         "Novo produto";
 
+
       el("product-form")
         .classList
         .remove("hidden");
+
 
       el("product-form")
         .scrollIntoView({
@@ -819,38 +1909,59 @@ el("new-product-btn")
   );
 
 
+/* =========================================================
+   RESET PRODUTO
+========================================================= */
+
 function resetProductForm() {
-  el("editing-product-id").value =
+
+  el("editing-product-id")
+    .value =
     "";
+
 
   el("editing-product-image-url")
     .value =
     "";
 
-  el("product-category").value =
+
+  el("product-category")
+    .value =
     "";
 
-  el("product-name").value =
+
+  el("product-name")
+    .value =
     "";
 
-  el("product-description").value =
+
+  el("product-description")
+    .value =
     "";
 
-  el("product-price").value =
+
+  el("product-price")
+    .value =
     "";
 
-  el("product-image").value =
+
+  el("product-image")
+    .value =
     "";
+
 
   el("product-form-error")
     .textContent =
     "";
 
+
   selectedImageFile =
     null;
 
+
   removeCurrentImage =
     false;
+
 
   hideImagePreview();
 }
@@ -861,6 +1972,7 @@ function resetProductForm() {
 ========================================================= */
 
 function openEditProduct(id) {
+
   const product =
     products.find(
       item =>
@@ -868,58 +1980,83 @@ function openEditProduct(id) {
         String(id)
     );
 
+
   if (!product) {
     return;
   }
 
-  el("editing-product-id").value =
+
+  el("editing-product-id")
+    .value =
     product.id;
+
 
   el("editing-product-image-url")
     .value =
     product.image_url || "";
 
-  el("product-category").value =
-    product.category;
 
-  el("product-name").value =
+  renderProductCategoryOptions(
+    product.category
+  );
+
+
+  el("product-name")
+    .value =
     product.name;
 
-  el("product-description").value =
+
+  el("product-description")
+    .value =
     product.description || "";
 
-  el("product-price").value =
-    Number(product.price)
-      .toFixed(2);
 
-  el("product-image").value =
+  el("product-price")
+    .value =
+    Number(
+      product.price
+    ).toFixed(2);
+
+
+  el("product-image")
+    .value =
     "";
+
 
   selectedImageFile =
     null;
 
+
   removeCurrentImage =
     false;
 
+
   if (product.image_url) {
+
     showImagePreview(
       product.image_url
     );
+
   } else {
+
     hideImagePreview();
   }
+
 
   el("product-form-title")
     .textContent =
     "Editar produto";
 
+
   el("product-form-error")
     .textContent =
     "";
 
+
   el("product-form")
     .classList
     .remove("hidden");
+
 
   el("product-form")
     .scrollIntoView({
@@ -937,7 +2074,9 @@ el("cancel-product-btn")
   .addEventListener(
     "click",
     () => {
+
       resetProductForm();
+
 
       el("product-form")
         .classList
@@ -954,27 +2093,33 @@ el("save-product-btn")
   .addEventListener(
     "click",
     async () => {
+
       const editingId =
         el("editing-product-id")
           .value;
+
 
       const currentImageURL =
         el("editing-product-image-url")
           .value;
 
+
       const category =
         el("product-category")
           .value;
+
 
       const name =
         el("product-name")
           .value
           .trim();
 
+
       const description =
         el("product-description")
           .value
           .trim();
+
 
       const price =
         Number(
@@ -982,11 +2127,14 @@ el("save-product-btn")
             .value
         );
 
+
       el("product-form-error")
         .textContent =
         "";
 
+
       if (!category) {
+
         el("product-form-error")
           .textContent =
           "Selecione a categoria.";
@@ -994,7 +2142,9 @@ el("save-product-btn")
         return;
       }
 
+
       if (!name) {
+
         el("product-form-error")
           .textContent =
           "Digite o nome do produto.";
@@ -1002,10 +2152,12 @@ el("save-product-btn")
         return;
       }
 
+
       if (
         Number.isNaN(price) ||
         price <= 0
       ) {
+
         el("product-form-error")
           .textContent =
           "Digite um preço válido.";
@@ -1013,72 +2165,134 @@ el("save-product-btn")
         return;
       }
 
+
       el("save-product-btn")
         .disabled =
         true;
+
 
       el("save-product-btn")
         .textContent =
         "Salvando...";
 
+
+      let newUploadedImageURL =
+        null;
+
+
       try {
-        let imageURL =
-          currentImageURL || null;
+
+        /*
+          Se o usuário escolheu uma foto nova,
+          fazemos upload antes de atualizar o banco.
+        */
 
         if (selectedImageFile) {
-          const newImageURL =
+
+          newUploadedImageURL =
             await uploadProductImage(
               selectedImageFile,
               name
             );
-
-          if (
-            currentImageURL &&
-            newImageURL !==
-              currentImageURL
-          ) {
-            await deleteImageFromStorage(
-              currentImageURL
-            );
-          }
-
-          imageURL =
-            newImageURL;
         }
 
-        if (
-          removeCurrentImage &&
-          currentImageURL
-        ) {
-          await deleteImageFromStorage(
-            currentImageURL
-          );
 
-          imageURL =
+        let finalImageURL =
+          currentImageURL || null;
+
+
+        if (newUploadedImageURL) {
+
+          finalImageURL =
+            newUploadedImageURL;
+        }
+
+
+        if (removeCurrentImage) {
+
+          finalImageURL =
             null;
         }
 
+
         if (editingId) {
+
           await updateProduct({
             editingId,
             category,
             name,
             description,
             price,
-            imageURL
+            imageURL:
+              finalImageURL
           });
+
+
+          /*
+            Só depois do banco ter sido atualizado
+            apagamos a imagem antiga.
+          */
+
+          if (
+            currentImageURL &&
+            (
+              newUploadedImageURL ||
+              removeCurrentImage
+            )
+          ) {
+
+            await deleteImageFromStorage(
+              currentImageURL
+            );
+          }
+
         } else {
+
           await createProduct({
             category,
             name,
             description,
             price,
-            imageURL
+            imageURL:
+              finalImageURL
           });
         }
 
+
+        resetProductForm();
+
+
+        el("product-form")
+          .classList
+          .add("hidden");
+
+
+        await loadProducts();
+
+
+        alert(
+          editingId
+            ? "Produto atualizado com sucesso!"
+            : "Produto cadastrado com sucesso!"
+        );
+
       } catch (error) {
+
         console.error(error);
+
+
+        /*
+          Se subimos uma imagem nova mas o produto
+          não foi salvo, removemos a imagem recém-enviada.
+        */
+
+        if (newUploadedImageURL) {
+
+          await deleteImageFromStorage(
+            newUploadedImageURL
+          );
+        }
+
 
         el("product-form-error")
           .textContent =
@@ -1086,9 +2300,11 @@ el("save-product-btn")
           "Não foi possível salvar o produto.";
 
       } finally {
+
         el("save-product-btn")
           .disabled =
           false;
+
 
         el("save-product-btn")
           .textContent =
@@ -1098,6 +2314,10 @@ el("save-product-btn")
   );
 
 
+/* =========================================================
+   CRIAR PRODUTO
+========================================================= */
+
 async function createProduct({
   category,
   name,
@@ -1105,12 +2325,14 @@ async function createProduct({
   price,
   imageURL
 }) {
+
   const productsInCategory =
     products.filter(
       product =>
         product.category ===
         category
     );
+
 
   const maxSort =
     productsInCategory.length
@@ -1123,12 +2345,12 @@ async function createProduct({
                 ) || 0
             )
         )
-      : categoryBaseSort(
-          category
-        );
+      : 0;
+
 
   const sortOrder =
     maxSort + 10;
+
 
   const {
     error
@@ -1149,36 +2371,33 @@ async function createProduct({
           sortOrder
       });
 
+
   if (error) {
+
     console.error(error);
+
 
     if (
       error.code ===
       "23505"
     ) {
+
       throw new Error(
         "Já existe um produto com esse nome."
       );
     }
 
+
     throw new Error(
       "Não foi possível cadastrar o produto."
     );
   }
-
-  resetProductForm();
-
-  el("product-form")
-    .classList
-    .add("hidden");
-
-  await loadProducts();
-
-  alert(
-    "Produto cadastrado com sucesso!"
-  );
 }
 
+
+/* =========================================================
+   ATUALIZAR PRODUTO
+========================================================= */
 
 async function updateProduct({
   editingId,
@@ -1188,6 +2407,7 @@ async function updateProduct({
   price,
   imageURL
 }) {
+
   const oldProduct =
     products.find(
       item =>
@@ -1195,22 +2415,33 @@ async function updateProduct({
         String(editingId)
     );
 
+
   let sortOrder =
     oldProduct
-      ? oldProduct.sort_order
+      ? Number(
+          oldProduct.sort_order
+        ) || 0
       : 0;
+
+
+  /*
+    Se ele mudou de categoria,
+    vai para o final da nova categoria.
+  */
 
   if (
     oldProduct &&
     oldProduct.category !==
       category
   ) {
+
     const productsInCategory =
       products.filter(
         product =>
           product.category ===
           category
       );
+
 
     const maxSort =
       productsInCategory.length
@@ -1223,13 +2454,13 @@ async function updateProduct({
                   ) || 0
               )
           )
-        : categoryBaseSort(
-            category
-          );
+        : 0;
+
 
     sortOrder =
       maxSort + 10;
   }
+
 
   const {
     error
@@ -1252,46 +2483,27 @@ async function updateProduct({
         editingId
       );
 
+
   if (error) {
+
     console.error(error);
+
 
     if (
       error.code ===
       "23505"
     ) {
+
       throw new Error(
         "Já existe outro produto com esse nome."
       );
     }
 
+
     throw new Error(
       "Não foi possível editar o produto."
     );
   }
-
-  resetProductForm();
-
-  el("product-form")
-    .classList
-    .add("hidden");
-
-  await loadProducts();
-
-  alert(
-    "Produto atualizado com sucesso!"
-  );
-}
-
-
-function categoryBaseSort(category) {
-  const bases = {
-    "Cachorro-quente": 0,
-    "Pastéis": 100,
-    "Caldos": 200,
-    "Porções": 300
-  };
-
-  return bases[category] || 0;
 }
 
 
@@ -1300,6 +2512,7 @@ function categoryBaseSort(category) {
 ========================================================= */
 
 async function loadNeighborhoods() {
+
   const {
     data,
     error
@@ -1309,7 +2522,9 @@ async function loadNeighborhoods() {
       .select("*")
       .order("name");
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar bairros:",
       error
@@ -1322,15 +2537,23 @@ async function loadNeighborhoods() {
     return;
   }
 
+
   neighborhoods =
     data || [];
+
 
   renderNeighborhoods();
 }
 
 
+/* =========================================================
+   EXIBIR BAIRROS
+========================================================= */
+
 function renderNeighborhoods() {
+
   if (!neighborhoods.length) {
+
     el("admin-neighborhoods")
       .innerHTML =
       "<p>Nenhum bairro cadastrado.</p>";
@@ -1338,54 +2561,59 @@ function renderNeighborhoods() {
     return;
   }
 
+
   el("admin-neighborhoods")
     .innerHTML =
     neighborhoods
-      .map(
-        neighborhood => `
-          <div class="admin-neighborhood">
+      .map(neighborhood => `
+        <div class="admin-neighborhood">
 
-            <div>
+          <div>
 
-              <strong>
-                ${escapeHTML(neighborhood.name)}
-              </strong>
+            <strong>
+              ${escapeHTML(neighborhood.name)}
+            </strong>
 
-              <br>
+            <br>
 
-              <small>
-                ${money(neighborhood.fee)}
-              </small>
-
-            </div>
-
-
-            <div class="order-actions">
-
-              <button
-                class="secondary-btn"
-                data-neighborhood-toggle="${neighborhood.id}"
-              >
-                ${
-                  neighborhood.active
-                    ? "Desativar"
-                    : "Ativar"
-                }
-              </button>
-
-
-              <button
-                class="danger-btn"
-                data-neighborhood-delete="${neighborhood.id}"
-              >
-                Excluir
-              </button>
-
-            </div>
+            <small>
+              ${money(neighborhood.fee)}
+              •
+              ${
+                neighborhood.active
+                  ? "Ativo"
+                  : "Inativo"
+              }
+            </small>
 
           </div>
-        `
-      )
+
+
+          <div class="order-actions">
+
+            <button
+              class="secondary-btn"
+              data-neighborhood-toggle="${neighborhood.id}"
+            >
+              ${
+                neighborhood.active
+                  ? "Desativar"
+                  : "Ativar"
+              }
+            </button>
+
+
+            <button
+              class="danger-btn"
+              data-neighborhood-delete="${neighborhood.id}"
+            >
+              Excluir
+            </button>
+
+          </div>
+
+        </div>
+      `)
       .join("");
 
 
@@ -1394,12 +2622,15 @@ function renderNeighborhoods() {
       "[data-neighborhood-toggle]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .neighborhoodToggle;
+
 
           const neighborhood =
             neighborhoods.find(
@@ -1408,9 +2639,11 @@ function renderNeighborhoods() {
                 String(id)
             );
 
+
           if (!neighborhood) {
             return;
           }
+
 
           const {
             error
@@ -1426,7 +2659,9 @@ function renderNeighborhoods() {
                 id
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -1435,6 +2670,7 @@ function renderNeighborhoods() {
 
             return;
           }
+
 
           await loadNeighborhoods();
         }
@@ -1447,21 +2683,26 @@ function renderNeighborhoods() {
       "[data-neighborhood-delete]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .neighborhoodDelete;
+
 
           const confirmed =
             confirm(
               "Tem certeza que deseja excluir este bairro?"
             );
 
+
           if (!confirmed) {
             return;
           }
+
 
           const {
             error
@@ -1474,7 +2715,9 @@ function renderNeighborhoods() {
                 id
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -1484,6 +2727,7 @@ function renderNeighborhoods() {
             return;
           }
 
+
           await loadNeighborhoods();
         }
       );
@@ -1491,14 +2735,20 @@ function renderNeighborhoods() {
 }
 
 
+/* =========================================================
+   ADICIONAR BAIRRO
+========================================================= */
+
 el("add-neighborhood-btn")
   .addEventListener(
     "click",
     async () => {
+
       const name =
         el("new-neighborhood")
           .value
           .trim();
+
 
       const fee =
         Number(
@@ -1506,7 +2756,9 @@ el("add-neighborhood-btn")
             .value
         );
 
+
       if (!name) {
+
         alert(
           "Digite o nome do bairro."
         );
@@ -1514,16 +2766,19 @@ el("add-neighborhood-btn")
         return;
       }
 
+
       if (
         Number.isNaN(fee) ||
         fee < 0
       ) {
+
         alert(
           "Digite uma taxa válida."
         );
 
         return;
       }
+
 
       const {
         error
@@ -1536,7 +2791,9 @@ el("add-neighborhood-btn")
             active: true
           });
 
+
       if (error) {
+
         console.error(error);
 
         alert(
@@ -1546,13 +2803,16 @@ el("add-neighborhood-btn")
         return;
       }
 
+
       el("new-neighborhood")
         .value =
         "";
 
+
       el("new-fee")
         .value =
         "";
+
 
       await loadNeighborhoods();
     }
@@ -1564,6 +2824,7 @@ el("add-neighborhood-btn")
 ========================================================= */
 
 async function loadOrders() {
+
   const {
     data,
     error
@@ -1583,7 +2844,9 @@ async function loadOrders() {
       )
       .limit(100);
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar pedidos:",
       error
@@ -1596,14 +2859,21 @@ async function loadOrders() {
     return;
   }
 
+
   renderOrders(
     data || []
   );
 }
 
 
+/* =========================================================
+   STATUS DO PEDIDO
+========================================================= */
+
 function statusLabel(status) {
+
   const labels = {
+
     received:
       "Recebido",
 
@@ -1623,13 +2893,20 @@ function statusLabel(status) {
       "Cancelado"
   };
 
+
   return labels[status] ||
     status;
 }
 
 
+/* =========================================================
+   EXIBIR PEDIDOS
+========================================================= */
+
 function renderOrders(orders) {
+
   if (!orders.length) {
+
     el("orders")
       .innerHTML =
       "<p>Nenhum pedido recebido ainda.</p>";
@@ -1637,10 +2914,12 @@ function renderOrders(orders) {
     return;
   }
 
+
   el("orders")
     .innerHTML =
     orders
       .map(order => {
+
         const createdAt =
           new Date(
             order.created_at
@@ -1648,6 +2927,7 @@ function renderOrders(orders) {
             .toLocaleString(
               "pt-BR"
             );
+
 
         const address =
           order.fulfillment ===
@@ -1659,12 +2939,10 @@ function renderOrders(orders) {
 
               <br>
 
-              ${
-                escapeHTML(
-                  order.neighborhood
-                    ?.name || ""
-                )
-              }
+              ${escapeHTML(
+                order.neighborhood
+                  ?.name || ""
+              )}
 
               ${
                 order.complement
@@ -1676,17 +2954,17 @@ function renderOrders(orders) {
               }
             `;
 
+
         const items =
           (order.items || [])
-            .map(
-              item => `
-                <div>
-                  ${Number(item.qty)}x
-                  ${escapeHTML(item.name)}
-                </div>
-              `
-            )
+            .map(item => `
+              <div>
+                ${Number(item.qty)}x
+                ${escapeHTML(item.name)}
+              </div>
+            `)
             .join("");
+
 
         return `
           <div class="order-card">
@@ -1709,9 +2987,7 @@ function renderOrders(orders) {
 
 
               <span class="badge">
-
                 ${statusLabel(order.status)}
-
               </span>
 
             </div>
@@ -1855,16 +3131,20 @@ function renderOrders(orders) {
       "[data-order-status]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const orderId =
             button.dataset
               .orderId;
 
+
           const status =
             button.dataset
               .orderStatus;
+
 
           const {
             error
@@ -1879,7 +3159,9 @@ function renderOrders(orders) {
                 orderId
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -1889,12 +3171,17 @@ function renderOrders(orders) {
             return;
           }
 
+
           await loadOrders();
         }
       );
     });
 }
 
+
+/* =========================================================
+   ATUALIZAR PEDIDOS
+========================================================= */
 
 el("refresh-orders-btn")
   .addEventListener(
@@ -1909,13 +3196,16 @@ el("refresh-orders-btn")
 
 setInterval(
   async () => {
+
     const {
       data: { session }
     } =
       await db.auth
         .getSession();
 
+
     if (session) {
+
       loadOrders();
     }
   },
