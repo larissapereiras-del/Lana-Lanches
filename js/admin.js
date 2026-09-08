@@ -5,93 +5,164 @@ const categoryOrder = [
   "Porções"
 ];
 
+
 const money = value =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL"
-  }).format(value || 0);
+  }).format(Number(value) || 0);
 
-const el = id => document.getElementById(id);
+
+const el = id =>
+  document.getElementById(id);
+
+
+const escapeHTML = value => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+};
+
 
 let products = [];
 let neighborhoods = [];
 
 
 /* =========================================================
-   LOGIN E SESSÃO
+   LOGIN
 ========================================================= */
 
 async function checkSession() {
+
   const {
     data: { session }
-  } = await db.auth.getSession();
+  } =
+    await db.auth.getSession();
+
 
   if (session) {
-    showAdminPanel();
+    await showAdminPanel();
   }
 }
 
 
 el("login-btn")
-  .addEventListener("click", async () => {
-    const email = el("email").value.trim();
-    const password = el("password").value;
+  .addEventListener(
+    "click",
+    login
+  );
 
-    el("login-error").textContent = "";
 
-    if (!email || !password) {
-      el("login-error").textContent =
-        "Preencha e-mail e senha.";
-      return;
+el("password")
+  .addEventListener(
+    "keydown",
+    event => {
+
+      if (event.key === "Enter") {
+        login();
+      }
+
     }
+  );
 
-    el("login-btn").disabled = true;
 
-    const {
-      error
-    } =
-      await db.auth.signInWithPassword({
+async function login() {
+
+  const email =
+    el("email")
+      .value
+      .trim();
+
+  const password =
+    el("password")
+      .value;
+
+
+  el("login-error").textContent =
+    "";
+
+
+  if (!email || !password) {
+
+    el("login-error").textContent =
+      "Preencha e-mail e senha.";
+
+    return;
+  }
+
+
+  el("login-btn").disabled =
+    true;
+
+
+  const {
+    error
+  } =
+    await db.auth
+      .signInWithPassword({
         email,
         password
       });
 
-    el("login-btn").disabled = false;
 
-    if (error) {
-      console.error(error);
+  el("login-btn").disabled =
+    false;
 
-      el("login-error").textContent =
-        "E-mail ou senha inválidos.";
 
-      return;
-    }
+  if (error) {
 
-    showAdminPanel();
-  });
+    console.error(error);
+
+    el("login-error").textContent =
+      "E-mail ou senha inválidos.";
+
+    return;
+  }
+
+
+  await showAdminPanel();
+}
 
 
 el("logout-btn")
-  .addEventListener("click", async () => {
-    await db.auth.signOut();
+  .addEventListener(
+    "click",
+    async () => {
 
-    el("admin-panel")
-      .classList
-      .add("hidden");
+      await db.auth.signOut();
 
-    el("login-card")
-      .classList
-      .remove("hidden");
-  });
+
+      el("admin-panel")
+        .classList
+        .add("hidden");
+
+
+      el("login-card")
+        .classList
+        .remove("hidden");
+
+    }
+  );
 
 
 async function showAdminPanel() {
+
   el("login-card")
     .classList
     .add("hidden");
 
+
   el("admin-panel")
     .classList
     .remove("hidden");
+
 
   await Promise.all([
     loadStore(),
@@ -107,6 +178,7 @@ async function showAdminPanel() {
 ========================================================= */
 
 async function loadStore() {
+
   const {
     data,
     error
@@ -117,37 +189,57 @@ async function loadStore() {
       .eq("id", 1)
       .single();
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar status:",
       error
     );
 
-    el("admin-store-text").textContent =
+    el("admin-store-text")
+      .textContent =
       "Erro ao carregar status.";
 
     return;
   }
 
+
   const labels = {
-    open: "🟢 Loja aberta",
-    paused: "🟡 Pedidos pausados",
-    closed: "🔴 Loja fechada"
+
+    open:
+      "🟢 Loja aberta e recebendo pedidos",
+
+    paused:
+      "🟡 Novos pedidos estão pausados",
+
+    closed:
+      "🔴 Loja fechada"
+
   };
 
-  el("admin-store-text").textContent =
-    labels[data.status] || data.status;
+
+  el("admin-store-text")
+    .textContent =
+    labels[data.status] ||
+    data.status;
 }
 
 
 document
-  .querySelectorAll("[data-store-status]")
+  .querySelectorAll(
+    "[data-store-status]"
+  )
   .forEach(button => {
+
     button.addEventListener(
       "click",
       async () => {
+
         const status =
-          button.dataset.storeStatus;
+          button.dataset
+            .storeStatus;
+
 
         const {
           error
@@ -157,11 +249,14 @@ document
             .update({
               status,
               updated_at:
-                new Date().toISOString()
+                new Date()
+                  .toISOString()
             })
             .eq("id", 1);
 
+
         if (error) {
+
           console.error(error);
 
           alert(
@@ -171,9 +266,12 @@ document
           return;
         }
 
+
         await loadStore();
+
       }
     );
+
   });
 
 
@@ -182,6 +280,7 @@ document
 ========================================================= */
 
 async function loadProducts() {
+
   const {
     data,
     error
@@ -189,44 +288,63 @@ async function loadProducts() {
     await db
       .from("products")
       .select("*")
-      .order("sort_order");
+      .order(
+        "sort_order",
+        {
+          ascending: true
+        }
+      );
+
 
   if (error) {
+
     console.error(
       "Erro ao carregar produtos:",
       error
     );
 
-    el("admin-products").innerHTML =
+    el("admin-products")
+      .innerHTML =
       "<p>Erro ao carregar produtos.</p>";
 
     return;
   }
 
-  products = data || [];
+
+  products =
+    data || [];
+
 
   renderProducts();
 }
 
 
 function renderProducts() {
-  el("admin-products").innerHTML =
+
+  el("admin-products")
+    .innerHTML =
     categoryOrder
       .map(category => {
+
         const items =
           products.filter(
             product =>
-              product.category === category
+              product.category ===
+              category
           );
+
 
         if (!items.length) {
           return "";
         }
 
+
         return `
           <div class="admin-category">
 
-            <h3>${category}</h3>
+            <h3>
+              ${escapeHTML(category)}
+            </h3>
 
             ${
               items
@@ -234,30 +352,79 @@ function renderProducts() {
                   product => `
                     <div class="admin-product">
 
-                      <div>
-                        <strong>
-                          ${product.name}
-                        </strong>
+                      <div class="admin-product-info">
 
-                        <br>
+                        <div class="admin-product-name">
 
-                        <small>
+                          <strong>
+                            ${escapeHTML(product.name)}
+                          </strong>
+
+                          <span
+                            class="product-status ${
+                              product.active
+                                ? "product-active"
+                                : "product-inactive"
+                            }"
+                          >
+                            ${
+                              product.active
+                                ? "Disponível"
+                                : "Indisponível"
+                            }
+                          </span>
+
+                        </div>
+
+
+                        ${
+                          product.description
+                            ? `
+                              <p class="admin-product-description">
+                                ${escapeHTML(product.description)}
+                              </p>
+                            `
+                            : ""
+                        }
+
+
+                        <span class="admin-product-price">
                           ${money(product.price)}
-                        </small>
+                        </span>
+
                       </div>
 
-                      <label>
-                        <input
-                          type="checkbox"
+
+                      <div class="admin-product-actions">
+
+                        <button
+                          class="secondary-btn"
+                          data-product-edit="${product.id}"
+                        >
+                          ✏️ Editar
+                        </button>
+
+
+                        <button
+                          class="secondary-btn"
                           data-product-toggle="${product.id}"
+                        >
                           ${
                             product.active
-                              ? "checked"
-                              : ""
+                              ? "Desativar"
+                              : "Ativar"
                           }
+                        </button>
+
+
+                        <button
+                          class="danger-btn"
+                          data-product-delete="${product.id}"
                         >
-                        Disponível
-                      </label>
+                          🗑️ Excluir
+                        </button>
+
+                      </div>
 
                     </div>
                   `
@@ -267,23 +434,65 @@ function renderProducts() {
 
           </div>
         `;
+
       })
       .join("");
+
+
+  bindProductButtons();
+}
+
+
+function bindProductButtons() {
+
+  document
+    .querySelectorAll(
+      "[data-product-edit]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          openEditProduct(
+            button.dataset
+              .productEdit
+          );
+
+        }
+      );
+
+    });
 
 
   document
     .querySelectorAll(
       "[data-product-toggle]"
     )
-    .forEach(input => {
-      input.addEventListener(
-        "change",
-        async () => {
-          const id =
-            input.dataset.productToggle;
+    .forEach(button => {
 
-          const active =
-            input.checked;
+      button.addEventListener(
+        "click",
+        async () => {
+
+          const id =
+            button.dataset
+              .productToggle;
+
+
+          const product =
+            products.find(
+              item =>
+                String(item.id) ===
+                String(id)
+            );
+
+
+          if (!product) {
+            return;
+          }
+
 
           const {
             error
@@ -291,31 +500,587 @@ function renderProducts() {
             await db
               .from("products")
               .update({
-                active
+                active:
+                  !product.active
               })
-              .eq("id", id);
+              .eq(
+                "id",
+                id
+              );
+
 
           if (error) {
-            console.error(error);
 
-            input.checked =
-              !active;
+            console.error(error);
 
             alert(
               "Não foi possível alterar a disponibilidade do produto."
             );
+
+            return;
           }
+
+
+          await loadProducts();
+
         }
       );
+
+    });
+
+
+  document
+    .querySelectorAll(
+      "[data-product-delete]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        async () => {
+
+          const id =
+            button.dataset
+              .productDelete;
+
+
+          const product =
+            products.find(
+              item =>
+                String(item.id) ===
+                String(id)
+            );
+
+
+          if (!product) {
+            return;
+          }
+
+
+          const confirmed =
+            confirm(
+              `Deseja realmente excluir "${product.name}"?`
+            );
+
+
+          if (!confirmed) {
+            return;
+          }
+
+
+          const {
+            error
+          } =
+            await db
+              .from("products")
+              .delete()
+              .eq(
+                "id",
+                id
+              );
+
+
+          if (error) {
+
+            console.error(error);
+
+            alert(
+              "Esse produto não pôde ser excluído. Se ele já estiver vinculado a um pedido antigo, apenas desative o produto."
+            );
+
+            return;
+          }
+
+
+          await loadProducts();
+
+        }
+      );
+
     });
 }
 
 
 /* =========================================================
-   BAIRROS E TAXAS
+   NOVO PRODUTO
+========================================================= */
+
+el("new-product-btn")
+  .addEventListener(
+    "click",
+    () => {
+
+      resetProductForm();
+
+      el("product-form-title")
+        .textContent =
+        "Novo produto";
+
+
+      el("product-form")
+        .classList
+        .remove("hidden");
+
+
+      el("product-form")
+        .scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+
+    }
+  );
+
+
+function resetProductForm() {
+
+  el("editing-product-id").value =
+    "";
+
+  el("product-category").value =
+    "";
+
+  el("product-name").value =
+    "";
+
+  el("product-description").value =
+    "";
+
+  el("product-price").value =
+    "";
+
+  el("product-form-error")
+    .textContent =
+    "";
+}
+
+
+/* =========================================================
+   EDITAR PRODUTO
+========================================================= */
+
+function openEditProduct(id) {
+
+  const product =
+    products.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!product) {
+    return;
+  }
+
+
+  el("editing-product-id").value =
+    product.id;
+
+  el("product-category").value =
+    product.category;
+
+  el("product-name").value =
+    product.name;
+
+  el("product-description").value =
+    product.description || "";
+
+  el("product-price").value =
+    Number(product.price).toFixed(2);
+
+
+  el("product-form-title")
+    .textContent =
+    "Editar produto";
+
+
+  el("product-form-error")
+    .textContent =
+    "";
+
+
+  el("product-form")
+    .classList
+    .remove("hidden");
+
+
+  el("product-form")
+    .scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+}
+
+
+/* =========================================================
+   CANCELAR PRODUTO
+========================================================= */
+
+el("cancel-product-btn")
+  .addEventListener(
+    "click",
+    () => {
+
+      resetProductForm();
+
+      el("product-form")
+        .classList
+        .add("hidden");
+
+    }
+  );
+
+
+/* =========================================================
+   SALVAR PRODUTO
+========================================================= */
+
+el("save-product-btn")
+  .addEventListener(
+    "click",
+    async () => {
+
+      const editingId =
+        el("editing-product-id")
+          .value;
+
+
+      const category =
+        el("product-category")
+          .value;
+
+
+      const name =
+        el("product-name")
+          .value
+          .trim();
+
+
+      const description =
+        el("product-description")
+          .value
+          .trim();
+
+
+      const price =
+        Number(
+          el("product-price")
+            .value
+        );
+
+
+      el("product-form-error")
+        .textContent =
+        "";
+
+
+      if (!category) {
+
+        el("product-form-error")
+          .textContent =
+          "Selecione a categoria.";
+
+        return;
+      }
+
+
+      if (!name) {
+
+        el("product-form-error")
+          .textContent =
+          "Digite o nome do produto.";
+
+        return;
+      }
+
+
+      if (
+        Number.isNaN(price) ||
+        price <= 0
+      ) {
+
+        el("product-form-error")
+          .textContent =
+          "Digite um preço válido.";
+
+        return;
+      }
+
+
+      el("save-product-btn")
+        .disabled =
+        true;
+
+
+      if (editingId) {
+
+        await updateProduct({
+          editingId,
+          category,
+          name,
+          description,
+          price
+        });
+
+      } else {
+
+        await createProduct({
+          category,
+          name,
+          description,
+          price
+        });
+
+      }
+
+
+      el("save-product-btn")
+        .disabled =
+        false;
+
+    }
+  );
+
+
+async function createProduct({
+  category,
+  name,
+  description,
+  price
+}) {
+
+  const productsInCategory =
+    products.filter(
+      product =>
+        product.category ===
+        category
+    );
+
+
+  const maxSort =
+    productsInCategory.length
+      ? Math.max(
+          ...productsInCategory
+            .map(
+              product =>
+                Number(
+                  product.sort_order
+                ) || 0
+            )
+        )
+      : categoryBaseSort(category);
+
+
+  const sortOrder =
+    maxSort + 10;
+
+
+  const {
+    error
+  } =
+    await db
+      .from("products")
+      .insert({
+        category,
+        name,
+        description:
+          description || null,
+        price,
+        active: true,
+        sort_order:
+          sortOrder
+      });
+
+
+  if (error) {
+
+    console.error(error);
+
+
+    if (
+      error.code ===
+      "23505"
+    ) {
+
+      el("product-form-error")
+        .textContent =
+        "Já existe um produto com esse nome.";
+
+    } else {
+
+      el("product-form-error")
+        .textContent =
+        "Não foi possível cadastrar o produto.";
+
+    }
+
+    return;
+  }
+
+
+  resetProductForm();
+
+
+  el("product-form")
+    .classList
+    .add("hidden");
+
+
+  await loadProducts();
+
+
+  alert(
+    "Produto cadastrado com sucesso!"
+  );
+}
+
+
+async function updateProduct({
+  editingId,
+  category,
+  name,
+  description,
+  price
+}) {
+
+  const oldProduct =
+    products.find(
+      item =>
+        String(item.id) ===
+        String(editingId)
+    );
+
+
+  let sortOrder =
+    oldProduct
+      ? oldProduct.sort_order
+      : 0;
+
+
+  if (
+    oldProduct &&
+    oldProduct.category !==
+      category
+  ) {
+
+    const productsInCategory =
+      products.filter(
+        product =>
+          product.category ===
+          category
+      );
+
+
+    const maxSort =
+      productsInCategory.length
+        ? Math.max(
+            ...productsInCategory
+              .map(
+                product =>
+                  Number(
+                    product.sort_order
+                  ) || 0
+              )
+          )
+        : categoryBaseSort(
+            category
+          );
+
+
+    sortOrder =
+      maxSort + 10;
+  }
+
+
+  const {
+    error
+  } =
+    await db
+      .from("products")
+      .update({
+        category,
+        name,
+        description:
+          description || null,
+        price,
+        sort_order:
+          sortOrder
+      })
+      .eq(
+        "id",
+        editingId
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+
+    if (
+      error.code ===
+      "23505"
+    ) {
+
+      el("product-form-error")
+        .textContent =
+        "Já existe outro produto com esse nome.";
+
+    } else {
+
+      el("product-form-error")
+        .textContent =
+        "Não foi possível editar o produto.";
+
+    }
+
+    return;
+  }
+
+
+  resetProductForm();
+
+
+  el("product-form")
+    .classList
+    .add("hidden");
+
+
+  await loadProducts();
+
+
+  alert(
+    "Produto atualizado com sucesso!"
+  );
+}
+
+
+function categoryBaseSort(category) {
+
+  const bases = {
+
+    "Cachorro-quente": 0,
+
+    "Pastéis": 100,
+
+    "Caldos": 200,
+
+    "Porções": 300
+
+  };
+
+
+  return bases[category] || 0;
+}
+
+
+/* =========================================================
+   BAIRROS
 ========================================================= */
 
 async function loadNeighborhoods() {
+
   const {
     data,
     error
@@ -325,26 +1090,34 @@ async function loadNeighborhoods() {
       .select("*")
       .order("name");
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar bairros:",
       error
     );
 
-    el("admin-neighborhoods").innerHTML =
+    el("admin-neighborhoods")
+      .innerHTML =
       "<p>Erro ao carregar bairros.</p>";
 
     return;
   }
 
-  neighborhoods = data || [];
+
+  neighborhoods =
+    data || [];
+
 
   renderNeighborhoods();
 }
 
 
 function renderNeighborhoods() {
+
   if (!neighborhoods.length) {
+
     el("admin-neighborhoods")
       .innerHTML =
       "<p>Nenhum bairro cadastrado.</p>";
@@ -352,15 +1125,18 @@ function renderNeighborhoods() {
     return;
   }
 
-  el("admin-neighborhoods").innerHTML =
+
+  el("admin-neighborhoods")
+    .innerHTML =
     neighborhoods
       .map(
         neighborhood => `
           <div class="admin-neighborhood">
 
             <div>
+
               <strong>
-                ${neighborhood.name}
+                ${escapeHTML(neighborhood.name)}
               </strong>
 
               <br>
@@ -368,7 +1144,9 @@ function renderNeighborhoods() {
               <small>
                 ${money(neighborhood.fee)}
               </small>
+
             </div>
+
 
             <div class="order-actions">
 
@@ -383,8 +1161,9 @@ function renderNeighborhoods() {
                 }
               </button>
 
+
               <button
-                class="secondary-btn"
+                class="danger-btn"
                 data-neighborhood-delete="${neighborhood.id}"
               >
                 Excluir
@@ -403,12 +1182,15 @@ function renderNeighborhoods() {
       "[data-neighborhood-toggle]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .neighborhoodToggle;
+
 
           const neighborhood =
             neighborhoods.find(
@@ -417,9 +1199,11 @@ function renderNeighborhoods() {
                 String(id)
             );
 
+
           if (!neighborhood) {
             return;
           }
+
 
           const {
             error
@@ -430,9 +1214,14 @@ function renderNeighborhoods() {
                 active:
                   !neighborhood.active
               })
-              .eq("id", id);
+              .eq(
+                "id",
+                id
+              );
+
 
           if (error) {
+
             console.error(error);
 
             alert(
@@ -442,9 +1231,12 @@ function renderNeighborhoods() {
             return;
           }
 
+
           await loadNeighborhoods();
+
         }
       );
+
     });
 
 
@@ -453,21 +1245,26 @@ function renderNeighborhoods() {
       "[data-neighborhood-delete]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const id =
             button.dataset
               .neighborhoodDelete;
+
 
           const confirmed =
             confirm(
               "Tem certeza que deseja excluir este bairro?"
             );
 
+
           if (!confirmed) {
             return;
           }
+
 
           const {
             error
@@ -475,9 +1272,14 @@ function renderNeighborhoods() {
             await db
               .from("neighborhoods")
               .delete()
-              .eq("id", id);
+              .eq(
+                "id",
+                id
+              );
+
 
           if (error) {
+
             console.error(error);
 
             alert(
@@ -487,9 +1289,12 @@ function renderNeighborhoods() {
             return;
           }
 
+
           await loadNeighborhoods();
+
         }
       );
+
     });
 }
 
@@ -498,17 +1303,22 @@ el("add-neighborhood-btn")
   .addEventListener(
     "click",
     async () => {
+
       const name =
         el("new-neighborhood")
           .value
           .trim();
 
+
       const fee =
         Number(
-          el("new-fee").value
+          el("new-fee")
+            .value
         );
 
+
       if (!name) {
+
         alert(
           "Digite o nome do bairro."
         );
@@ -516,16 +1326,19 @@ el("add-neighborhood-btn")
         return;
       }
 
+
       if (
         Number.isNaN(fee) ||
         fee < 0
       ) {
+
         alert(
           "Digite uma taxa válida."
         );
 
         return;
       }
+
 
       const {
         error
@@ -538,7 +1351,9 @@ el("add-neighborhood-btn")
             active: true
           });
 
+
       if (error) {
+
         console.error(error);
 
         alert(
@@ -548,13 +1363,19 @@ el("add-neighborhood-btn")
         return;
       }
 
-      el("new-neighborhood").value =
+
+      el("new-neighborhood")
+        .value =
         "";
 
-      el("new-fee").value =
+
+      el("new-fee")
+        .value =
         "";
+
 
       await loadNeighborhoods();
+
     }
   );
 
@@ -564,6 +1385,7 @@ el("add-neighborhood-btn")
 ========================================================= */
 
 async function loadOrders() {
+
   const {
     data,
     error
@@ -583,17 +1405,21 @@ async function loadOrders() {
       )
       .limit(100);
 
+
   if (error) {
+
     console.error(
       "Erro ao carregar pedidos:",
       error
     );
 
-    el("orders").innerHTML =
+    el("orders")
+      .innerHTML =
       "<p>Erro ao carregar pedidos.</p>";
 
     return;
   }
+
 
   renderOrders(
     data || []
@@ -602,68 +1428,101 @@ async function loadOrders() {
 
 
 function statusLabel(status) {
+
   const labels = {
-    received: "Recebido",
-    preparing: "Preparando",
-    ready: "Pronto",
-    delivering: "Saiu para entrega",
-    completed: "Concluído",
-    cancelled: "Cancelado"
+
+    received:
+      "Recebido",
+
+    preparing:
+      "Preparando",
+
+    ready:
+      "Pronto",
+
+    delivering:
+      "Saiu para entrega",
+
+    completed:
+      "Concluído",
+
+    cancelled:
+      "Cancelado"
+
   };
 
-  return labels[status] || status;
+
+  return labels[status] ||
+    status;
 }
 
 
 function renderOrders(orders) {
+
   if (!orders.length) {
-    el("orders").innerHTML =
+
+    el("orders")
+      .innerHTML =
       "<p>Nenhum pedido recebido ainda.</p>";
 
     return;
   }
 
-  el("orders").innerHTML =
+
+  el("orders")
+    .innerHTML =
     orders
       .map(order => {
+
         const createdAt =
           new Date(
             order.created_at
           )
-          .toLocaleString(
-            "pt-BR"
-          );
+            .toLocaleString(
+              "pt-BR"
+            );
+
 
         const address =
           order.fulfillment ===
           "pickup"
-            ? "Retirada"
+            ? "Retirada no local"
             : `
-              ${order.street || ""},
-              ${order.number || ""}
+              ${escapeHTML(order.street || "")},
+              ${escapeHTML(order.number || "")}
+
               <br>
+
               ${
-                order.neighborhood
-                  ?.name || ""
+                escapeHTML(
+                  order.neighborhood
+                    ?.name || ""
+                )
               }
+
               ${
                 order.complement
-                  ? `<br>${order.complement}`
+                  ? `
+                    <br>
+                    ${escapeHTML(order.complement)}
+                  `
                   : ""
               }
             `;
+
 
         const items =
           (order.items || [])
             .map(
               item => `
                 <div>
-                  ${item.qty}x
-                  ${item.name}
+                  ${Number(item.qty)}x
+                  ${escapeHTML(item.name)}
                 </div>
               `
             )
             .join("");
+
 
         return `
           <div class="order-card">
@@ -671,6 +1530,7 @@ function renderOrders(orders) {
             <div class="order-head">
 
               <div>
+
                 <strong>
                   Pedido #${order.id}
                 </strong>
@@ -680,61 +1540,90 @@ function renderOrders(orders) {
                 <small>
                   ${createdAt}
                 </small>
+
               </div>
 
+
               <span class="badge">
+
                 ${statusLabel(order.status)}
+
               </span>
 
             </div>
 
+
             <p>
+
               <strong>
-                ${order.customer_name}
+                ${escapeHTML(order.customer_name)}
               </strong>
 
               <br>
 
-              ${order.customer_phone}
+              ${escapeHTML(order.customer_phone)}
+
             </p>
+
 
             <p>
               ${address}
             </p>
 
+
             <p>
-              <strong>Itens:</strong>
+
+              <strong>
+                Itens:
+              </strong>
+
               <br>
+
               ${items}
+
             </p>
+
 
             ${
               order.notes
                 ? `
                   <p>
+
                     <strong>
                       Observações:
                     </strong>
+
                     <br>
-                    ${order.notes}
+
+                    ${escapeHTML(order.notes)}
+
                   </p>
                 `
                 : ""
             }
 
-            <p>
-              Pagamento:
-              <strong>
-                ${order.payment_method}
-              </strong>
-            </p>
 
             <p>
+
+              Pagamento:
+
+              <strong>
+                ${escapeHTML(order.payment_method)}
+              </strong>
+
+            </p>
+
+
+            <p>
+
               Total:
+
               <strong>
                 ${money(order.total)}
               </strong>
+
             </p>
+
 
             <div class="order-actions">
 
@@ -746,6 +1635,7 @@ function renderOrders(orders) {
                 Preparando
               </button>
 
+
               <button
                 class="secondary-btn"
                 data-order-status="ready"
@@ -753,6 +1643,7 @@ function renderOrders(orders) {
               >
                 Pronto
               </button>
+
 
               ${
                 order.fulfillment ===
@@ -769,6 +1660,7 @@ function renderOrders(orders) {
                   : ""
               }
 
+
               <button
                 class="secondary-btn"
                 data-order-status="completed"
@@ -777,8 +1669,9 @@ function renderOrders(orders) {
                 Concluir
               </button>
 
+
               <button
-                class="secondary-btn"
+                class="danger-btn"
                 data-order-status="cancelled"
                 data-order-id="${order.id}"
               >
@@ -789,6 +1682,7 @@ function renderOrders(orders) {
 
           </div>
         `;
+
       })
       .join("");
 
@@ -798,14 +1692,20 @@ function renderOrders(orders) {
       "[data-order-status]"
     )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         async () => {
+
           const orderId =
-            button.dataset.orderId;
+            button.dataset
+              .orderId;
+
 
           const status =
-            button.dataset.orderStatus;
+            button.dataset
+              .orderStatus;
+
 
           const {
             error
@@ -820,7 +1720,9 @@ function renderOrders(orders) {
                 orderId
               );
 
+
           if (error) {
+
             console.error(error);
 
             alert(
@@ -830,9 +1732,12 @@ function renderOrders(orders) {
             return;
           }
 
+
           await loadOrders();
+
         }
       );
+
     });
 }
 
@@ -844,18 +1749,24 @@ el("refresh-orders-btn")
   );
 
 
-/* Atualização automática dos pedidos */
+/* =========================================================
+   ATUALIZAÇÃO AUTOMÁTICA
+========================================================= */
+
 setInterval(
   async () => {
+
     const {
       data: { session }
     } =
       await db.auth
         .getSession();
 
+
     if (session) {
       loadOrders();
     }
+
   },
   15000
 );
