@@ -169,6 +169,106 @@
       </section>
 
 
+      <!-- CATEGORIAS -->
+
+      <section class="admin-card">
+
+        <div class="admin-heading">
+
+          <div>
+            <h2>📂 Categorias do cardápio</h2>
+
+            <p>
+              Crie novas categorias como Sobremesas, Bebidas ou Combos.
+            </p>
+          </div>
+
+          <button
+            id="new-category-btn"
+            class="primary-btn"
+          >
+            + Nova categoria
+          </button>
+
+        </div>
+
+
+        <div
+          id="category-form"
+          class="product-form hidden"
+        >
+
+          <h3 id="category-form-title">
+            Nova categoria
+          </h3>
+
+          <input
+            id="editing-category-id"
+            type="hidden"
+          >
+
+
+          <label>
+            Nome da categoria
+
+            <input
+              id="category-name"
+              type="text"
+              placeholder="Ex.: Sobremesas"
+            >
+          </label>
+
+
+          <label>
+            Ordem no cardápio
+
+            <input
+              id="category-sort-order"
+              type="number"
+              min="0"
+              step="10"
+              placeholder="Ex.: 50"
+            >
+          </label>
+
+
+          <p class="field-help">
+            Quanto menor o número, mais acima a categoria aparece no cardápio.
+          </p>
+
+
+          <div class="product-form-actions">
+
+            <button
+              id="save-category-btn"
+              class="primary-btn"
+            >
+              Salvar categoria
+            </button>
+
+            <button
+              id="cancel-category-btn"
+              class="secondary-btn"
+            >
+              Cancelar
+            </button>
+
+          </div>
+
+
+          <p
+            id="category-form-error"
+            class="error"
+          ></p>
+
+        </div>
+
+
+        <div id="admin-categories"></div>
+
+      </section>
+
+
       <!-- CARDÁPIO -->
 
       <section class="admin-card">
@@ -225,22 +325,6 @@
                 Selecione
               </option>
 
-              <option value="Cachorro-quente">
-                Cachorro-quente
-              </option>
-
-              <option value="Pastéis">
-                Pastéis
-              </option>
-
-              <option value="Caldos">
-                Caldos
-              </option>
-
-              <option value="Porções">
-                Porções
-              </option>
-
             </select>
 
           </label>
@@ -252,7 +336,7 @@
             <input
               id="product-name"
               type="text"
-              placeholder="Ex.: Pastel de Queijo"
+              placeholder="Ex.: Pudim"
             >
           </label>
 
@@ -262,7 +346,7 @@
 
             <textarea
               id="product-description"
-              placeholder="Ex.: Mussarela, tomate e orégano"
+              placeholder="Ex.: Pudim de leite condensado"
             ></textarea>
           </label>
 
@@ -275,7 +359,7 @@
               type="number"
               min="0"
               step="0.01"
-              placeholder="Ex.: 15,00"
+              placeholder="Ex.: 12,00"
             >
           </label>
 
@@ -404,7 +488,6 @@
 
 
   <script src="js/config.js"></script>
-
   <script src="js/admin.js"></script>
 
 </body>
