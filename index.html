@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Lana Lanches</title>
+
+  <meta
+    name="description"
+    content="Faça seu pedido na Lana Lanches."
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/style.css"
+  >
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+  <!-- CABEÇALHO -->
+  <header class="topbar">
+
+    <div class="brand">
+      <h1>
+        Lana <span>Lanches</span>
+      </h1>
+
+      <p>
+        Sabor que dá água na boca!
+      </p>
+    </div>
+
+    <div
+      id="store-status"
+      class="status"
+    >
+      Carregando...
+    </div>
+
+  </header>
+
+
+  <main class="container">
+
+    <!-- AVISO DE LOJA FECHADA / PAUSADA -->
+    <div
+      id="store-message"
+      class="notice hidden"
+    ></div>
+
+
+    <!-- CATEGORIAS -->
+    <nav
+      id="categories"
+      class="categories"
+    ></nav>
+
+
+    <!-- CARDÁPIO -->
+    <section id="menu"></section>
+
+
+    <!-- CARRINHO -->
+    <aside class="cart">
+
+      <div class="cart-title">
+
+        <h2>
+          Seu pedido
+        </h2>
+
+        <span id="cart-count">
+          0 itens
+        </span>
+
+      </div>
+
+
+      <div id="cart-items">
+
+        <p>
+          Seu carrinho está vazio.
+        </p>
+
+      </div>
+
+
+      <div class="summary">
+
+        <div>
+          <span>Subtotal</span>
+
+          <strong id="subtotal">
+            R$ 0,00
+          </strong>
+        </div>
+
+
+        <div>
+          <span>Entrega</span>
+
+          <strong id="delivery-fee">
+            R$ 0,00
+          </strong>
+        </div>
+
+
+        <div class="total">
+
+          <span>Total</span>
+
+          <strong id="total">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <button
+        id="continue-btn"
+        class="primary-btn"
+      >
+        Continuar pedido
+      </button>
+
+
+      <p
+        id="cart-error"
+        class="error"
+      ></p>
+
+    </aside>
+
+
+    <!-- FINALIZAÇÃO DO PEDIDO -->
+    <section
+      id="checkout"
+      class="checkout hidden"
+    >
+
+      <h2>
+        Finalizar pedido
+      </h2>
+
+
+      <!-- DADOS DO CLIENTE -->
+      <div class="grid-2">
+
+        <label>
+
+          Nome
+
+          <input
+            id="customer-name"
+            type="text"
+            placeholder="Seu nome"
+          >
+
+        </label>
+
+
+        <label>
+
+          WhatsApp
+
+          <input
+            id="customer-phone"
+            type="tel"
+            placeholder="(11) 99999-9999"
+          >
+
+        </label>
+
+      </div>
+
+
+      <!-- ENTREGA OU RETIRADA -->
+      <div class="delivery-choice">
+
+        <label>
+
+          <input
+            type="radio"
+            name="fulfillment"
+            value="delivery"
+            checked
+          >
+
+          Delivery
+
+        </label>
+
+
+        <label>
+
+          <input
+            type="radio"
+            name="fulfillment"
+            value="pickup"
+          >
+
+          Retirada
+
+        </label>
+
+      </div>
+
+
+      <!-- ENDEREÇO -->
+      <div id="delivery-fields">
+
+        <label>
+
+          Bairro
+
+          <select id="neighborhood">
+
+            <option value="">
+              Selecione o bairro
+            </option>
+
+          </select>
+
+        </label>
+
+
+        <div class="grid-address">
+
+          <label>
+
+            Rua
+
+            <input
+              id="street"
+              type="text"
+              placeholder="Nome da rua"
+            >
+
+          </label>
+
+
+          <label>
+
+            Número
+
+            <input
+              id="number"
+              type="text"
+              placeholder="123"
+            >
+
+          </label>
+
+        </div>
+
+
+        <label>
+
+          Complemento / referência
+
+          <input
+            id="complement"
+            type="text"
+            placeholder="Casa, bloco, ponto de referência..."
+          >
+
+        </label>
+
+      </div>
+
+
+      <!-- PAGAMENTO -->
+      <label>
+
+        Forma de pagamento
+
+        <select id="payment">
+
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="PIX">
+            PIX
+          </option>
+
+          <option value="Dinheiro">
+            Dinheiro
+          </option>
+
+          <option value="Cartão na entrega">
+            Cartão na entrega
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <!-- OBSERVAÇÕES -->
+      <label>
+
+        Observações
+
+        <textarea
+          id="notes"
+          placeholder="Ex.: sem milho, sem cebola, troco para R$ 50..."
+        ></textarea>
+
+      </label>
+
+
+      <!-- RESUMO -->
+      <div class="checkout-total">
+
+        <div>
+
+          <span>
+            Produtos
+          </span>
+
+          <strong id="checkout-subtotal">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Entrega
+          </span>
+
+          <strong id="checkout-fee">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+
+        <div class="total">
+
+          <span>
+            Total
+          </span>
+
+          <strong id="checkout-total">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <button
+        id="confirm-btn"
+        class="primary-btn"
+      >
+        Confirmar pedido
+      </button>
+
+
+      <p
+        id="checkout-error"
+        class="error"
+      ></p>
+
+    </section>
+
+
+    <!-- PEDIDO CONFIRMADO -->
+    <section
+      id="success"
+      class="success hidden"
+    >
+
+      <div class="success-icon">
+        ✅
+      </div>
+
+      <h2>
+        Pedido confirmado!
+      </h2>
+
+      <p id="success-text"></p>
+
+
+      <button
+        id="new-order-btn"
+        class="secondary-btn"
+      >
+        Fazer novo pedido
+      </button>
+
+    </section>
+
+  </main>
+
+
+  <!-- CONFIGURAÇÃO DO BANCO -->
+  <script src="/js/config.js"></script>
+
+
+  <!-- FUNCIONAMENTO DA LOJA -->
+  <script src="/js/app.js"></script>
+
+</body>
+
+</html>
