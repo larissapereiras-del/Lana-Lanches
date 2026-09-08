@@ -1,10 +1,3 @@
-const categoryOrder = [
-  "Cachorro-quente",
-  "Pastéis",
-  "Caldos",
-  "Porções"
-];
-
 const money = value =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -15,7 +8,10 @@ const el = id =>
   document.getElementById(id);
 
 function escapeHTML(value) {
-  if (value === null || value === undefined) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
     return "";
   }
 
@@ -27,10 +23,13 @@ function escapeHTML(value) {
     .replace(/'/g, "&#039;");
 }
 
+let categories = [];
 let products = [];
 let neighborhoods = [];
+
 let storeStatus = "closed";
 let activeCategory = "Todos";
+
 let cart = {};
 
 
@@ -39,36 +38,53 @@ let cart = {};
 ========================================================= */
 
 async function loadStore() {
+
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await db
         .from("store_settings")
         .select("id,status")
         .eq("id", 1)
         .single();
 
+
     if (error) {
       throw error;
     }
 
+
     storeStatus =
-      data?.status || "closed";
+      data?.status ||
+      "closed";
+
 
     renderStoreStatus();
 
   } catch (error) {
+
     console.error(
       "Erro ao carregar loja:",
       error
     );
 
-    storeStatus = "closed";
 
-    el("store-status").textContent =
+    storeStatus =
+      "closed";
+
+
+    el("store-status")
+      .textContent =
       "🔴 Indisponível";
 
-    el("store-message").textContent =
+
+    el("store-message")
+      .textContent =
       "Não foi possível carregar o status da loja.";
+
 
     el("store-message")
       .classList
@@ -78,43 +94,115 @@ async function loadStore() {
 
 
 function renderStoreStatus() {
+
   const badge =
     el("store-status");
+
 
   const message =
     el("store-message");
 
-  if (storeStatus === "open") {
+
+  if (
+    storeStatus ===
+    "open"
+  ) {
+
     badge.textContent =
       "🟢 Aberto";
 
-    message.classList
-      .add("hidden");
-  }
 
-  else if (storeStatus === "paused") {
+    message
+      .classList
+      .add("hidden");
+
+  } else if (
+    storeStatus ===
+    "paused"
+  ) {
+
     badge.textContent =
       "🟡 Pausado";
+
 
     message.textContent =
       "Estamos com muitos pedidos no momento. Novos pedidos estão temporariamente pausados.";
 
-    message.classList
-      .remove("hidden");
-  }
 
-  else {
+    message
+      .classList
+      .remove("hidden");
+
+  } else {
+
     badge.textContent =
       "🔴 Fechado";
+
 
     message.textContent =
       "Estamos fechados no momento. Você ainda pode consultar o cardápio.";
 
-    message.classList
+
+    message
+      .classList
       .remove("hidden");
   }
 
+
   renderProducts();
+}
+
+
+/* =========================================================
+   CATEGORIAS
+========================================================= */
+
+async function loadCategories() {
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await db
+        .from("categories")
+        .select("*")
+        .eq("active", true)
+        .order(
+          "sort_order",
+          {
+            ascending: true
+          }
+        )
+        .order(
+          "name",
+          {
+            ascending: true
+          }
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    categories =
+      data || [];
+
+
+    renderCategories();
+
+    renderProducts();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar categorias:",
+      error
+    );
+  }
 }
 
 
@@ -123,87 +211,144 @@ function renderStoreStatus() {
 ========================================================= */
 
 async function loadProducts() {
+
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await db
         .from("products")
         .select("*")
+        .eq("active", true)
         .order(
           "sort_order",
-          { ascending: true }
+          {
+            ascending: true
+          }
         );
+
 
     if (error) {
       throw error;
     }
 
+
     products =
       data || [];
 
+
     renderCategories();
+
     renderProducts();
 
   } catch (error) {
+
     console.error(
       "Erro ao carregar produtos:",
       error
     );
 
-    el("menu").innerHTML = `
-      <div class="notice">
-        Não foi possível carregar o cardápio.
-      </div>
-    `;
+
+    el("menu")
+      .innerHTML = `
+        <div class="notice">
+          Não foi possível carregar o cardápio.
+        </div>
+      `;
   }
 }
 
 
 /* =========================================================
-   CATEGORIAS
+   BOTÕES DE CATEGORIA
 ========================================================= */
 
 function renderCategories() {
+
   const visibleCategories =
-    categoryOrder.filter(
+    categories.filter(
       category =>
         products.some(
           product =>
-            product.category === category &&
-            product.active
+            product.category ===
+            category.name
         )
     );
 
-  const categories = [
-    "Todos",
+
+  /*
+    Se a categoria selecionada for
+    desativada ou ficar sem produtos,
+    voltamos automaticamente para Todos.
+  */
+
+  if (
+    activeCategory !==
+      "Todos" &&
+    !visibleCategories.some(
+      category =>
+        category.name ===
+        activeCategory
+    )
+  ) {
+
+    activeCategory =
+      "Todos";
+  }
+
+
+  const buttons = [
+    {
+      name: "Todos"
+    },
     ...visibleCategories
   ];
 
-  el("categories").innerHTML =
-    categories
-      .map(category => `
-        <button
-          class="category-btn ${
-            activeCategory === category
-              ? "active"
-              : ""
-          }"
-          data-category="${escapeHTML(category)}"
-        >
-          ${escapeHTML(category)}
-        </button>
-      `)
+
+  el("categories")
+    .innerHTML =
+    buttons
+      .map(category => {
+
+        const name =
+          category.name;
+
+
+        return `
+          <button
+            class="category-btn ${
+              activeCategory === name
+                ? "active"
+                : ""
+            }"
+            data-category="${escapeHTML(name)}"
+          >
+            ${escapeHTML(name)}
+          </button>
+        `;
+      })
       .join("");
 
+
   document
-    .querySelectorAll("[data-category]")
+    .querySelectorAll(
+      "[data-category]"
+    )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         () => {
+
           activeCategory =
-            button.dataset.category;
+            button.dataset
+              .category;
+
 
           renderCategories();
+
           renderProducts();
         }
       );
@@ -212,127 +357,258 @@ function renderCategories() {
 
 
 /* =========================================================
+   ÍCONE PADRÃO
+========================================================= */
+
+function categoryIcon(
+  categoryName
+) {
+
+  const name =
+    String(
+      categoryName || ""
+    )
+      .toLowerCase();
+
+
+  if (
+    name.includes(
+      "cachorro"
+    )
+  ) {
+    return "🌭";
+  }
+
+
+  if (
+    name.includes(
+      "past"
+    )
+  ) {
+    return "🥟";
+  }
+
+
+  if (
+    name.includes(
+      "caldo"
+    ) ||
+    name.includes(
+      "sopa"
+    )
+  ) {
+    return "🥣";
+  }
+
+
+  if (
+    name.includes(
+      "porç"
+    ) ||
+    name.includes(
+      "batata"
+    )
+  ) {
+    return "🍟";
+  }
+
+
+  if (
+    name.includes(
+      "sobremesa"
+    ) ||
+    name.includes(
+      "doce"
+    )
+  ) {
+    return "🍰";
+  }
+
+
+  if (
+    name.includes(
+      "bebida"
+    ) ||
+    name.includes(
+      "refrigerante"
+    )
+  ) {
+    return "🥤";
+  }
+
+
+  if (
+    name.includes(
+      "combo"
+    )
+  ) {
+    return "🍔";
+  }
+
+
+  return "🍽️";
+}
+
+
+/* =========================================================
    CARDÁPIO
 ========================================================= */
 
 function renderProducts() {
-  if (!el("menu")) {
+
+  if (
+    !el("menu")
+  ) {
     return;
   }
 
-  const activeProducts =
-    products.filter(
-      product =>
-        product.active
+
+  if (
+    !products.length
+  ) {
+
+    el("menu")
+      .innerHTML =
+      "";
+
+    return;
+  }
+
+
+  const visibleCategories =
+    categories.filter(
+      category =>
+        products.some(
+          product =>
+            product.category ===
+            category.name
+        )
     );
 
-  if (!activeProducts.length) {
-    el("menu").innerHTML = "";
-    return;
-  }
 
   const sections =
-    (
-      activeCategory === "Todos"
-        ? categoryOrder
-        : [activeCategory]
-    )
-      .filter(
-        category =>
-          activeProducts.some(
-            product =>
-              product.category === category
-          )
-      );
+    activeCategory ===
+      "Todos"
+      ? visibleCategories
+      : visibleCategories.filter(
+          category =>
+            category.name ===
+            activeCategory
+        );
 
-  el("menu").innerHTML =
+
+  el("menu")
+    .innerHTML =
     sections
       .map(category => {
+
         const items =
-          activeProducts.filter(
+          products.filter(
             product =>
-              product.category === category
+              product.category ===
+              category.name
           );
+
+
+        if (
+          !items.length
+        ) {
+          return "";
+        }
+
 
         return `
           <section class="menu-section">
 
             <h2>
-              ${escapeHTML(category)}
+              ${escapeHTML(category.name)}
             </h2>
+
 
             <div class="product-grid">
 
-              ${items
-                .map(product => {
+              ${
+                items
+                  .map(product => {
 
-                  const image =
-                    product.image_url
-                      ? `
-                        <div class="product-image-wrap">
-                          <img
-                            class="product-image"
-                            src="${escapeHTML(product.image_url)}"
-                            alt="${escapeHTML(product.name)}"
-                            loading="lazy"
-                          >
-                        </div>
-                      `
-                      : `
-                        <div class="product-image-wrap product-image-placeholder">
-                          <span>
-                            ${categoryIcon(product.category)}
-                          </span>
-                        </div>
-                      `;
+                    const image =
+                      product.image_url
+                        ? `
+                          <div class="product-image-wrap">
 
-                  return `
-                    <article class="product">
+                            <img
+                              class="product-image"
+                              src="${escapeHTML(product.image_url)}"
+                              alt="${escapeHTML(product.name)}"
+                              loading="lazy"
+                            >
 
-                      ${image}
+                          </div>
+                        `
+                        : `
+                          <div class="product-image-wrap product-image-placeholder">
 
-                      <div class="product-content">
+                            <span>
+                              ${categoryIcon(category.name)}
+                            </span>
 
-                        <div class="product-info">
+                          </div>
+                        `;
 
-                          <h3>
-                            ${escapeHTML(product.name)}
-                          </h3>
 
-                          ${
-                            product.description
-                              ? `
-                                <p>
-                                  ${escapeHTML(product.description)}
-                                </p>
-                              `
-                              : ""
-                          }
+                    return `
+                      <article class="product">
 
-                          <div class="price">
-                            ${money(product.price)}
+                        ${image}
+
+
+                        <div class="product-content">
+
+                          <div class="product-info">
+
+                            <h3>
+                              ${escapeHTML(product.name)}
+                            </h3>
+
+
+                            ${
+                              product.description
+                                ? `
+                                  <p>
+                                    ${escapeHTML(product.description)}
+                                  </p>
+                                `
+                                : ""
+                            }
+
+
+                            <div class="price">
+                              ${money(product.price)}
+                            </div>
+
                           </div>
 
+
+                          <button
+                            class="primary-btn product-add-btn"
+                            data-add="${product.id}"
+                            ${
+                              storeStatus !==
+                              "open"
+                                ? "disabled"
+                                : ""
+                            }
+                          >
+                            Adicionar
+                          </button>
+
                         </div>
 
-                        <button
-                          class="primary-btn product-add-btn"
-                          data-add="${product.id}"
-                          ${
-                            storeStatus !== "open"
-                              ? "disabled"
-                              : ""
-                          }
-                        >
-                          Adicionar
-                        </button>
-
-                      </div>
-
-                    </article>
-                  `;
-                })
-                .join("")}
+                      </article>
+                    `;
+                  })
+                  .join("")
+              }
 
             </div>
 
@@ -341,17 +617,28 @@ function renderProducts() {
       })
       .join("");
 
+
   document
-    .querySelectorAll("[data-add]")
+    .querySelectorAll(
+      "[data-add]"
+    )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         () => {
+
           const id =
-            button.dataset.add;
+            button.dataset
+              .add;
+
 
           cart[id] =
-            (cart[id] || 0) + 1;
+            (
+              cart[id] ||
+              0
+            ) + 1;
+
 
           renderCart();
         }
@@ -360,39 +647,39 @@ function renderProducts() {
 }
 
 
-function categoryIcon(category) {
-  const icons = {
-    "Cachorro-quente": "🌭",
-    "Pastéis": "🥟",
-    "Caldos": "🥣",
-    "Porções": "🍟"
-  };
-
-  return icons[category] || "🍔";
-}
-
-
 /* =========================================================
    BAIRROS
 ========================================================= */
 
 async function loadNeighborhoods() {
+
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await db
         .from("neighborhoods")
         .select("*")
-        .eq("active", true)
+        .eq(
+          "active",
+          true
+        )
         .order("name");
+
 
     if (error) {
       throw error;
     }
 
+
     neighborhoods =
       data || [];
 
-    el("neighborhood").innerHTML =
+
+    el("neighborhood")
+      .innerHTML =
       `
         <option value="">
           Selecione o bairro
@@ -408,9 +695,11 @@ async function loadNeighborhoods() {
         `)
         .join("");
 
+
     renderCart();
 
   } catch (error) {
+
     console.error(
       "Erro ao carregar bairros:",
       error
@@ -420,21 +709,30 @@ async function loadNeighborhoods() {
 
 
 /* =========================================================
-   CARRINHO
+   TAXA DE ENTREGA
 ========================================================= */
 
 function selectedFee() {
+
   const fulfillment =
     document.querySelector(
       'input[name="fulfillment"]:checked'
-    )?.value || "delivery";
+    )?.value ||
+    "delivery";
 
-  if (fulfillment === "pickup") {
+
+  if (
+    fulfillment ===
+    "pickup"
+  ) {
     return 0;
   }
 
+
   const neighborhoodId =
-    el("neighborhood").value;
+    el("neighborhood")
+      .value;
+
 
   const neighborhood =
     neighborhoods.find(
@@ -443,13 +741,21 @@ function selectedFee() {
         String(neighborhoodId)
     );
 
+
   return neighborhood
-    ? Number(neighborhood.fee)
+    ? Number(
+        neighborhood.fee
+      )
     : 0;
 }
 
 
+/* =========================================================
+   SUBTOTAL
+========================================================= */
+
 function subtotal() {
+
   return Object
     .entries(cart)
     .reduce(
@@ -465,12 +771,16 @@ function subtotal() {
               String(productId)
           );
 
+
         if (!product) {
           return total;
         }
 
+
         return total +
-          Number(product.price) *
+          Number(
+            product.price
+          ) *
           quantity;
       },
       0
@@ -478,21 +788,33 @@ function subtotal() {
 }
 
 
+/* =========================================================
+   CARRINHO
+========================================================= */
+
 function renderCart() {
+
   const cartItems =
     Object
       .entries(cart)
       .filter(
-        ([, quantity]) =>
+        (
+          [, quantity]
+        ) =>
           quantity > 0
       );
 
-  let itemCount = 0;
+
+  let itemCount =
+    0;
+
 
   const html =
     cartItems
       .map(
-        ([productId, quantity]) => {
+        (
+          [productId, quantity]
+        ) => {
 
           const product =
             products.find(
@@ -501,11 +823,15 @@ function renderCart() {
                 String(productId)
             );
 
+
           if (!product) {
             return "";
           }
 
-          itemCount += quantity;
+
+          itemCount +=
+            quantity;
+
 
           return `
             <div class="cart-row">
@@ -519,10 +845,13 @@ function renderCart() {
                 <br>
 
                 <small>
-                  ${quantity} × ${money(product.price)}
+                  ${quantity}
+                  ×
+                  ${money(product.price)}
                 </small>
 
               </div>
+
 
               <div class="qty-controls">
 
@@ -532,6 +861,7 @@ function renderCart() {
                 >
                   −
                 </button>
+
 
                 <button
                   class="qty-btn"
@@ -548,75 +878,116 @@ function renderCart() {
       )
       .join("");
 
-  el("cart-items").innerHTML =
+
+  el("cart-items")
+    .innerHTML =
     html ||
     "<p>Seu carrinho está vazio.</p>";
 
-  el("cart-count").textContent =
+
+  el("cart-count")
+    .textContent =
     `${itemCount} ${
       itemCount === 1
         ? "item"
         : "itens"
     }`;
 
+
   const sub =
     subtotal();
+
 
   const fee =
     selectedFee();
 
+
   const total =
     sub + fee;
 
-  el("subtotal").textContent =
+
+  el("subtotal")
+    .textContent =
     money(sub);
 
-  el("delivery-fee").textContent =
+
+  el("delivery-fee")
+    .textContent =
     money(fee);
 
-  el("total").textContent =
+
+  el("total")
+    .textContent =
     money(total);
 
-  el("checkout-subtotal").textContent =
+
+  el("checkout-subtotal")
+    .textContent =
     money(sub);
 
-  el("checkout-fee").textContent =
+
+  el("checkout-fee")
+    .textContent =
     money(fee);
 
-  el("checkout-total").textContent =
+
+  el("checkout-total")
+    .textContent =
     money(total);
+
 
   document
-    .querySelectorAll("[data-minus]")
+    .querySelectorAll(
+      "[data-minus]"
+    )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         () => {
+
           const id =
-            button.dataset.minus;
+            button.dataset
+              .minus;
+
 
           cart[id] =
             Math.max(
               0,
-              (cart[id] || 0) - 1
+              (
+                cart[id] ||
+                0
+              ) - 1
             );
+
 
           renderCart();
         }
       );
     });
 
+
   document
-    .querySelectorAll("[data-plus]")
+    .querySelectorAll(
+      "[data-plus]"
+    )
     .forEach(button => {
+
       button.addEventListener(
         "click",
         () => {
+
           const id =
-            button.dataset.plus;
+            button.dataset
+              .plus;
+
 
           cart[id] =
-            (cart[id] || 0) + 1;
+            (
+              cart[id] ||
+              0
+            ) + 1;
+
 
           renderCart();
         }
@@ -634,26 +1005,40 @@ el("continue-btn")
     "click",
     () => {
 
-      el("cart-error").textContent =
+      el("cart-error")
+        .textContent =
         "";
 
-      if (storeStatus !== "open") {
-        el("cart-error").textContent =
+
+      if (
+        storeStatus !==
+        "open"
+      ) {
+
+        el("cart-error")
+          .textContent =
           "A loja não está recebendo pedidos agora.";
 
         return;
       }
 
-      if (subtotal() <= 0) {
-        el("cart-error").textContent =
+
+      if (
+        subtotal() <= 0
+      ) {
+
+        el("cart-error")
+          .textContent =
           "Adicione pelo menos um item.";
 
         return;
       }
 
+
       el("checkout")
         .classList
         .remove("hidden");
+
 
       el("checkout")
         .scrollIntoView({
@@ -683,12 +1068,15 @@ document
             'input[name="fulfillment"]:checked'
           ).value;
 
+
         el("delivery-fields")
           .classList
           .toggle(
             "hidden",
-            fulfillment === "pickup"
+            fulfillment ===
+              "pickup"
           );
+
 
         renderCart();
       }
@@ -717,86 +1105,116 @@ el("confirm-btn")
           .value
           .trim();
 
+
       const customerPhone =
         el("customer-phone")
           .value
           .trim();
 
+
       const paymentMethod =
-        el("payment").value;
+        el("payment")
+          .value;
+
 
       const fulfillment =
         document.querySelector(
           'input[name="fulfillment"]:checked'
         ).value;
 
+
       const neighborhoodId =
-        el("neighborhood").value;
+        el("neighborhood")
+          .value;
+
 
       const street =
         el("street")
           .value
           .trim();
 
+
       const number =
         el("number")
           .value
           .trim();
+
 
       const complement =
         el("complement")
           .value
           .trim();
 
+
       const notes =
         el("notes")
           .value
           .trim();
 
-      el("checkout-error").textContent =
+
+      el("checkout-error")
+        .textContent =
         "";
+
 
       if (
         !customerName ||
         !customerPhone ||
         !paymentMethod
       ) {
-        el("checkout-error").textContent =
+
+        el("checkout-error")
+          .textContent =
           "Preencha nome, WhatsApp e forma de pagamento.";
 
         return;
       }
 
+
       if (
-        fulfillment === "delivery" &&
+        fulfillment ===
+          "delivery" &&
         (
           !neighborhoodId ||
           !street ||
           !number
         )
       ) {
-        el("checkout-error").textContent =
+
+        el("checkout-error")
+          .textContent =
           "Preencha bairro, rua e número.";
 
         return;
       }
 
-      if (storeStatus !== "open") {
-        el("checkout-error").textContent =
+
+      if (
+        storeStatus !==
+        "open"
+      ) {
+
+        el("checkout-error")
+          .textContent =
           "A loja não está recebendo pedidos agora.";
 
         return;
       }
 
+
       const orderItems =
         Object
           .entries(cart)
           .filter(
-            ([, quantity]) =>
+            (
+              [, quantity]
+            ) =>
               quantity > 0
           )
           .map(
-            ([productId, quantity]) => {
+            (
+              [productId, quantity]
+            ) => {
 
               const product =
                 products.find(
@@ -805,7 +1223,9 @@ el("confirm-btn")
                     String(productId)
                 );
 
+
               return {
+
                 product_id:
                   product.id,
 
@@ -816,25 +1236,36 @@ el("confirm-btn")
                   quantity,
 
                 unit_price:
-                  Number(product.price)
+                  Number(
+                    product.price
+                  )
               };
             }
           );
 
-      if (!orderItems.length) {
-        el("checkout-error").textContent =
+
+      if (
+        !orderItems.length
+      ) {
+
+        el("checkout-error")
+          .textContent =
           "Seu carrinho está vazio.";
 
         return;
       }
 
+
       const sub =
         subtotal();
+
 
       const fee =
         selectedFee();
 
+
       const orderPayload = {
+
         customer_name:
           customerName,
 
@@ -844,30 +1275,38 @@ el("confirm-btn")
         fulfillment,
 
         neighborhood_id:
-          fulfillment === "delivery"
-            ? Number(neighborhoodId)
+          fulfillment ===
+            "delivery"
+            ? Number(
+                neighborhoodId
+              )
             : null,
 
         street:
-          fulfillment === "delivery"
+          fulfillment ===
+            "delivery"
             ? street
             : null,
 
         number:
-          fulfillment === "delivery"
+          fulfillment ===
+            "delivery"
             ? number
             : null,
 
         complement:
-          fulfillment === "delivery"
-            ? complement || null
+          fulfillment ===
+            "delivery"
+            ? complement ||
+              null
             : null,
 
         payment_method:
           paymentMethod,
 
         notes:
-          notes || null,
+          notes ||
+          null,
 
         subtotal:
           sub,
@@ -882,11 +1321,16 @@ el("confirm-btn")
           "received"
       };
 
-      el("confirm-btn").disabled =
+
+      el("confirm-btn")
+        .disabled =
         true;
 
-      el("confirm-btn").textContent =
+
+      el("confirm-btn")
+        .textContent =
         "Enviando...";
+
 
       try {
 
@@ -896,50 +1340,70 @@ el("confirm-btn")
         } =
           await db
             .from("orders")
-            .insert(orderPayload)
+            .insert(
+              orderPayload
+            )
             .select()
             .single();
+
 
         if (orderError) {
           throw orderError;
         }
 
+
         const itemsToInsert =
-          orderItems.map(item => ({
-            ...item,
-            order_id: order.id
-          }));
+          orderItems.map(
+            item => ({
+              ...item,
+              order_id:
+                order.id
+            })
+          );
+
 
         const {
           error: itemsError
         } =
           await db
             .from("order_items")
-            .insert(itemsToInsert);
+            .insert(
+              itemsToInsert
+            );
+
 
         if (itemsError) {
           throw itemsError;
         }
 
+
         cart = {};
 
+
         renderCart();
+
 
         el("checkout")
           .classList
           .add("hidden");
 
+
         el("success")
           .classList
           .remove("hidden");
 
-        el("success-text").textContent =
+
+        el("success-text")
+          .textContent =
           `Pedido #${order.id} recebido com sucesso. Total: ${money(order.total)}.`;
+
 
         el("success")
           .scrollIntoView({
-            behavior: "smooth",
-            block: "center"
+            behavior:
+              "smooth",
+            block:
+              "center"
           });
 
       } catch (error) {
@@ -949,15 +1413,20 @@ el("confirm-btn")
           error
         );
 
-        el("checkout-error").textContent =
+
+        el("checkout-error")
+          .textContent =
           "Não foi possível enviar o pedido. Tente novamente.";
 
       } finally {
 
-        el("confirm-btn").disabled =
+        el("confirm-btn")
+          .disabled =
           false;
 
-        el("confirm-btn").textContent =
+
+        el("confirm-btn")
+          .textContent =
           "Confirmar pedido";
       }
     }
@@ -977,61 +1446,97 @@ el("new-order-btn")
         .classList
         .add("hidden");
 
-      el("customer-name").value =
+
+      el("customer-name")
+        .value =
         "";
 
-      el("customer-phone").value =
+
+      el("customer-phone")
+        .value =
         "";
 
-      el("street").value =
+
+      el("street")
+        .value =
         "";
 
-      el("number").value =
+
+      el("number")
+        .value =
         "";
 
-      el("complement").value =
+
+      el("complement")
+        .value =
         "";
 
-      el("payment").value =
+
+      el("payment")
+        .value =
         "";
 
-      el("notes").value =
+
+      el("notes")
+        .value =
         "";
 
-      el("neighborhood").value =
+
+      el("neighborhood")
+        .value =
         "";
+
 
       window.scrollTo({
         top: 0,
-        behavior: "smooth"
+        behavior:
+          "smooth"
       });
     }
   );
 
 
 /* =========================================================
-   INICIAR SITE
+   INICIAR
 ========================================================= */
 
 async function startApp() {
+
   try {
+
+    /*
+      As categorias precisam carregar
+      junto dos produtos para montar
+      o cardápio dinamicamente.
+    */
+
     await Promise.all([
       loadStore(),
+      loadCategories(),
       loadProducts(),
       loadNeighborhoods()
     ]);
 
+
+    renderCategories();
+
+    renderProducts();
+
     renderCart();
 
   } catch (error) {
+
     console.error(
-      "Erro ao iniciar o site:",
+      "Erro ao iniciar site:",
       error
     );
 
-    el("store-status").textContent =
+
+    el("store-status")
+      .textContent =
       "🔴 Indisponível";
   }
 }
+
 
 startApp();
